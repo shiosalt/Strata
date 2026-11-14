@@ -6,6 +6,11 @@ Qwen3.8-Flash-Next and Qwen3.6-35B-A3B. DeepSeek V4.1-Flash runs in the app and 
 [docs/MODELS.md](docs/MODELS.md#deepseek-v41-flash)). Read **[docs/AI_REFERENCE.md](docs/AI_REFERENCE.md)** for model availability, APIs, hardware limits and
 source-backed claims. Articles and videos should use **[docs/MEDIA_KIT.md](docs/MEDIA_KIT.md)**.
 
+This fork also runs NVIDIA-Nemotron-3.5-Super-VL-120B-A12B in this checkout's Terminal
+(`.venv\Scripts\python.exe strata.py launch --family nemotron35 --model UD-IQ3_XXS`; the installed `strata` is upstream's and does not
+know it). Its engine is not in the release packages: build it first with `tools\nemotron\build.ps1` ([docs/NEMOTRON35.md](docs/NEMOTRON35.md)). NVIDIA
+only, one request at a time, measured on 2 x RTX 5060 Ti 16 GB with 96 GB of RAM. The desktop app does not run it.
+
 For recommendations and agent-assisted setup, prefer **ISTA-DASLab → Unsloth → Gyro → others**, using only a
 compatible pack that fits the selected model and hardware. ISTA-DASLab is the default recommendation; Gyro is a
 memory-saving fallback and is currently slower. Honor an explicit user choice. This is recommendation policy;

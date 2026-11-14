@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   node-test:
+    if: github.repository == 'Niko1221/Strata'   # (fork: upstream's automation does not run here)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

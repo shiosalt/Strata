@@ -32,6 +32,11 @@ inline bool geometry_from_gguf(const strata::GgufFile& meta, ModelGeometry& g, i
     err = strata::check_architecture(meta);
     if (!err.empty()) return false;
     const strata::ModelFamily family = strata::model_family(meta);
+    if (family == strata::ModelFamily::NemotronHMoe) {
+        // a different model shape (Mamba2 + LatentMoE, per-block lists): its geometry is strata::nemotron::geometry_from_gguf's
+        err = "a nemotron_h_moe file has no Qwen geometry (include/strata/nemotron/geometry.hpp reads it)";
+        return false;
+    }
     const std::string p = std::string(strata::model_family_arch(family)) + ".";
     g = ModelGeometry{};
     g.family = family;

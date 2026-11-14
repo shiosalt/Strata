@@ -70,6 +70,7 @@ from strata_control import atomic
 from strata_control import draft_layer
 from strata_control import dsv41_context
 from strata_control import engine_component
+from strata_control import nemotron35
 from strata_control import sysinfo
 from strata_control.discovery import in_trash
 from strata_control import user_args
@@ -103,6 +104,7 @@ HF_REVISIONS = {
     "agentionai/Qwen3.8-Flash-Next-Gyro-GGUF": "1ada08422e404aca51ab9df665f089f34c419c6b",           # 2026-10-13
     "unsloth/DeepSeek-V4.1-Flash-1017-GGUF": "8a6ec9cf118e785a362ea94ee123c61c70553be6",             # 2026-10-30 (adds UD-IQ1_S / UD-IQ1_M; every file pinned from the 2026-10-20 commit has the same size and SHA-256 here)
     "ISTA-DASLab/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF": "cb02422c900df489cea5833e8a92171224059b3c",    # 2026-10-24 (ISTA-DASLab's final 1.75 / 2.00 / 2.25 bpw sets and Engram)
+    nemotron35.REPO: nemotron35.REVISION,                                                             # 2026-11-10 (Nemotron-3.5-Super-VL UD-IQ3_XXS)
 }
 
 
@@ -1021,6 +1023,12 @@ MULTI_FILE_FAMILIES["deepseek41"]["models"] = {
         "shared": []},
 }
 
+# NVIDIA-Nemotron-3.5-Super-VL-120B-A12B (GGUF architecture nemotron_h_moe), Unsloth's UD-IQ3_XXS: a family with an engine of its own
+# (src/nemotron, strata-nemotron, built from a source checkout) that reads the three shards as they are, plus the picture reader.  The table and
+# the config writer are strata_control/nemotron35.py (shared with `strata launch` and tools/nemotron/make_config.py); installed by
+# install_nemotron.  Offered by name (--family nemotron35), not in the menu: there is no ready-made engine for it yet.
+NEMOTRON_FAMILIES = {nemotron35.FAMILY: nemotron35.entry()}
+
 # Every model file Strata downloads has a fixed size and SHA-256: (repository, file name) -> (bytes, sha256).  download()
 # checks the file against it as soon as it is whole (a wrong file is deleted and setup stops), and stops before the
 # download when the server's size is not the pinned one.  The files are fetched from the commits in HF_REVISIONS.
@@ -1033,6 +1041,7 @@ REPO_PINS = {
     "agentionai/Qwen3.8-Flash-Next-Gyro-GGUF": GYRO_FILES,
     "unsloth/DeepSeek-V4.1-Flash-1017-GGUF": DSV41_FILES,
     "ISTA-DASLab/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF": DSV41_ISTA_FILES,
+    nemotron35.REPO: nemotron35.FILES,
 }
 # the files of a repository at a commit other than HF_REVISIONS' (UNSLOTH_V31_REVISION): (repository, commit) -> name -> (bytes, sha256); file_pin looks here first
 REV_PINS = {(UNSLOTH_REPO, UNSLOTH_V31_REVISION): {**UNSLOTH_V31_SHARDS, **UNSLOTH_Q4_V31_SHARDS}}
@@ -7212,14 +7221,25 @@ def previous_config(elsewhere_first: list, settings: dict):
 
 
 def own_path_config(cfg: dict) -> bool:
-    """A config for a family with its own engine path (Qwen3.6): its --mtp is a draft count, not a draft layer."""
-    return cfg.get("arch") in {d["arch"] for d in OWN_PATH_FAMILIES.values()}
+    """A config for a family with its own engine path (Qwen3.6, Nemotron-3.5): its --mtp is a draft count, not a draft layer."""
+    return cfg.get("arch") in {d["arch"] for d in (*OWN_PATH_FAMILIES.values(), *NEMOTRON_FAMILIES.values())}
 
 
 def choices_from_config(cfg_path: Path) -> dict:
     """The setup answers a config was written with (family, size, context, KV, images, projection, network)."""
     cfg = json.loads(cfg_path.read_text(encoding="utf-8-sig"))
     tag = cfg_path.stem[len("strata-"):]
+    nemo = next((f for f, d in NEMOTRON_FAMILIES.items() if tag.startswith(d["tag"])), None)
+    if nemo is not None:                               # Nemotron-3.5: its own size; pictures from the config's reader; no KV / projection settings
+        d = NEMOTRON_FAMILIES[nemo]
+        size = next((m for m in d["models"] if m.lower() == tag[len(d["tag"]):].lower()), None)
+        a = cfg.get("args", [])
+        ctx = a[a.index("--max-context") + 1] if "--max-context" in a and a.index("--max-context") + 1 < len(a) else None
+        vis = cfg.get("vision")
+        return {"family": nemo, "model": size, "context": int(ctx) if ctx and str(ctx).isdigit() else None, "kv": None,
+                "vision": ("gpu" if vis.get("gpu") else "cpu") if isinstance(vis, dict) else "none", "esp": "off", "host": cfg.get("host"),
+                "api_key": cfg.get("api_key"), "port": cfg.get("port"), "gpu": cfg.get("gpu"), "layer_split": None, "cuda": None,
+                "vram_reserve_mib": None}
     big = next((f for f, d in MULTI_FILE_FAMILIES.items() if tag.startswith(d["tag"])), None)
     if big is not None:                                # DeepSeek-V4.1-Flash: its own size; no KV / images / projection settings
         d = MULTI_FILE_FAMILIES[big]
@@ -7265,11 +7285,11 @@ def choices_from_config(cfg_path: Path) -> dict:
 def calibration_targets(have: list, model: str | None, family: str | None) -> list:
     """#2036: the installed configs `--calibrate --model X` (and/or --family) means; every config with neither."""
     if not (model or family):
-        return [c for c in have if choices_from_config(c)["family"] not in (*OWN_PATH_FAMILIES, *MULTI_FILE_FAMILIES)]
+        return [c for c in have if choices_from_config(c)["family"] not in (*OWN_PATH_FAMILIES, *MULTI_FILE_FAMILIES, *NEMOTRON_FAMILIES)]
     out = []
     for c in have:
         ch = choices_from_config(c)
-        if ch["family"] in OWN_PATH_FAMILIES or ch["family"] in MULTI_FILE_FAMILIES:   # the tuning measures Flash-Next's engine settings
+        if ch["family"] in OWN_PATH_FAMILIES or ch["family"] in MULTI_FILE_FAMILIES or ch["family"] in NEMOTRON_FAMILIES:   # the tuning measures Flash-Next's engine settings
             continue
         if (not model or ch["model"] == model) and (not family or ch["family"] == family):
             out.append(c)
@@ -9426,6 +9446,104 @@ def dsv41_cards(gpu: dict, all_cards: list | None, asked: bool) -> list:
     return list(all_cards)
 
 
+def install_nemotron(a, family) -> int:
+    """NVIDIA-Nemotron-3.5-Super-VL-120B-A12B (NEMOTRON_FAMILIES): where it fits (warnings, never a refusal), the engine (built from a source
+    checkout; it is looked for, never downloaded), the three pinned shards and the picture reader (or your own, --gguf-dir), the tokenizer and
+    chat template from the metadata shard, and the run config strata-nemotron35-<size>.json.  strata_control/nemotron35.py holds the table and
+    writes the config (tools/nemotron/make_config.py writes the same one for a checkout)."""
+    N = nemotron35
+    fam = NEMOTRON_FAMILIES[family]
+    model = a.model or next(iter(fam["models"]))
+    md = fam["models"][model]
+    say()
+    say(f"  {fam['title']} - {fam['by']}: {fam['about']}")
+    say(f"  Size {model}: {md['about']}")
+    cards = [] if a.backend in ("hip", "sycl") else gpus()
+    for line in N.fit_lines(ram_gb(), cards):
+        warn(line)
+    # the engine first: without it the 60 GB download would be of no use on this computer
+    exe = N.find_engine(home(), ROOT)
+    if a.check:                                                   # --check: what this computer has for it, nothing is written
+        (ok if exe else warn)(f"engine: {exe}" if exe else N.NOT_BUILT.format(where=home() / "engine-nemotron"))
+        return 0
+    if exe is None:
+        fail(N.NOT_BUILT.format(where=home() / "engine-nemotron"),
+             "build it with: cmake --build build/nemotron-cuda --target strata (docs/NEMOTRON35.md), or set STRATA_NEMOTRON_ENGINE to its strata.exe")
+    ok(f"engine: {exe}")
+    try:
+        context = N.context_of(a.context)
+    except ValueError as e:
+        fail(str(e), "use --context 131072 (128K, the default) or --context 262144 (256K)")
+    if a.kv:
+        warn(f"--kv {a.kv}: Nemotron-3.5's engine keeps its K/V in BF16; the choice is not used")
+    # the model's files: your own folder (--gguf-dir: the size's folder, the repository folder above it, or one shard), else the pinned download
+    if a.gguf_dir:
+        found = N.find_set(Path(a.gguf_dir))
+        if found is None or found[0] != model:
+            fail(f"{a.gguf_dir} holds no {model} shards of {fam['title']} ({', '.join(md['shards'])})",
+                 "give the folder with all three shards, or leave out --gguf-dir to download them")
+        folder = found[1]
+        missing = N.missing_parts(folder, model)
+        if missing:
+            fail(f"{len(missing)} of the 3 shards are missing from {folder} (or not the pinned size): {', '.join(missing)}",
+                 "put every shard in the folder, or leave out --gguf-dir to download them")
+        ok(f"model files: {folder} (used where they are, nothing is copied)")
+    else:
+        folder = N.folder_for(Path(a.models_dir), model)
+        base = hf(N.REPO)
+        for i, n in enumerate(md["shards"], 1):
+            download(base + f"{md['subdir']}/{n}", folder / n, f"{fam['title']} {model} (part {i} of {len(md['shards'])})")
+    want_vision = (a.vision or "cpu") not in ("no", "none")
+    vision_mode = "gpu" if a.vision == "gpu" else "cpu"
+    mmproj = vision_exe = None
+    if want_vision:
+        mmproj = N.mmproj_in(folder)
+        if mmproj is None and a.gguf_dir:
+            warn(f"no {N.MMPROJ} beside your files: the model starts without pictures (download it beside them, or leave out --gguf-dir)")
+        elif mmproj is None:
+            mmproj = folder / N.MMPROJ
+            download(hf(N.REPO) + N.MMPROJ, mmproj, f"{fam['title']} picture reader")
+        vision_exe = N.find_vision(home(), ROOT, vision_mode == "gpu")
+        if mmproj is not None and vision_exe is None:
+            warn("no strata-vision that reads Nemotron's picture projector (it needs a llama.cpp newer than the pinned one: docs/NEMOTRON35.md, "
+                 "'Pictures'): the model starts without pictures")
+        if mmproj is None or vision_exe is None:
+            want_vision = False
+    first = folder / md["shards"][0]
+    tag = (fam["tag"] + model).lower()
+    run_dir = Path(a.models_dir).parent / "nemotron" / tag        # the tokenizer and the learned expert profile (<data>/nemotron/<tag>)
+    try:
+        tok = N.write_tokenizer(first, run_dir, ROOT)
+    except Exception as e:                                        # noqa: BLE001 - said in one line
+        fail(f"the tokenizer could not be read from {first.name}: {e}", "check that the first shard is whole (it is 7.9 MB)")
+    if a.gpus:
+        cards_used = [int(x) for x in str(a.gpus).replace(" ", "").split(",") if x != "" and x != "all"] or [int(c["index"]) for c in cards]
+    elif a.gpu is not None:
+        cards_used = [int(a.gpu)]
+    else:
+        cards_used = [int(c["index"]) for c in cards][:2] or [0]
+    try:
+        cfg = N.build_config(first=first, exe=exe, tokenizer=tok, out=run_dir, context=context, gpus=cards_used,
+                             vision=vision_mode if want_vision else "off", vision_exe=vision_exe, mmproj=mmproj,
+                             vision_max_tokens=a.vision_tokens, log=home() / f"strata-{tag}.log")
+    except ValueError as e:
+        fail(str(e))
+    cfg["host"] = a.host or "127.0.0.1"
+    cfg["port"] = a.port or 8080
+    if a.api_key:
+        cfg["api_key"] = a.api_key
+    if len(cards_used) > 1:
+        cfg["gpus_asked"] = bool(a.gpus or a.gpu_roles)
+    path = home() / f"strata-{tag}.json"
+    write_config(path, cfg)
+    ok(f"run settings: {path.name} (context {context // 1024}K, {N.DEFAULT_MTP} MTP drafts, pictures "
+       + (f"on the {vision_mode.upper()}" if want_vision else "off") + f", cards {','.join(map(str, cards_used))})")
+    if a.no_start:
+        return 0
+    say(f"  Start it: python serve/server.py --engine strata --config \"{path}\" --port {cfg['port']}   (or strata launch --family {family})")
+    return 0
+
+
 def install_dsv41(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted, all_cards=None):
     """Steps 2-7 for DeepSeek-V4.1-Flash (MULTI_FILE_FAMILIES): where it fits (strata_control/dsv41_fit.py, said plainly: a 508 GB
     download and a model larger than most computers' memory are warnings, never a refusal), the engine (strata-dsv41), the nine
@@ -10151,20 +10269,23 @@ def main() -> int:
         return mac_setup(sys.argv[1:])
     _peek = lambda flag: next((v.split("=", 1)[1] if v.startswith(flag + "=") else sys.argv[i + 2] if i + 2 < len(sys.argv) else None   # noqa: E731
                                for i, v in enumerate(sys.argv[1:]) if v == flag or v.startswith(flag + "=")), None)
-    if (_peek("--family") and _peek("--family") not in {**FAMILIES, **OWN_PATH_FAMILIES, **MULTI_FILE_FAMILIES}) \
+    if (_peek("--family") and _peek("--family") not in {**FAMILIES, **OWN_PATH_FAMILIES, **MULTI_FILE_FAMILIES, **NEMOTRON_FAMILIES}) \
             or (_peek("--model") and not _peek("--family") and model_alias(_peek("--model")) not in MODELS
-                and not any(model_alias(_peek("--model")) in f["models"] for f in (*OWN_PATH_FAMILIES.values(), *MULTI_FILE_FAMILIES.values()))):
+                and not any(model_alias(_peek("--model")) in f["models"]
+                            for f in (*OWN_PATH_FAMILIES.values(), *MULTI_FILE_FAMILIES.values(), *NEMOTRON_FAMILIES.values()))):
         feed_models_setup(_peek("--feed"))             # a name the built-in tables do not know may be a model of the signed feed
         if _peek("--family") in FEED_UNAVAILABLE:
             fail(f"{FEED_UNAVAILABLE[_peek('--family')]['title']} is {FEED_UNAVAILABLE[_peek('--family')]['reason']}")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--family", choices=list(FAMILIES) + list(PREVIEW_FAMILIES) + list(MULTI_FILE_FAMILIES),
+    ap.add_argument("--family", choices=list(FAMILIES) + list(PREVIEW_FAMILIES) + list(MULTI_FILE_FAMILIES) + list(NEMOTRON_FAMILIES),
                     help="qwen = Qwen3.8-Flash-Next, swift = Swift 1.5, qwen36 = Qwen3.6-35B-A3B (pictures with --vision, "
                          "several requests at once with --parallel; docs/QWEN36.md), deepseek41 = DeepSeek-V4.1-Flash "
-                         "(the official 1.75 / 2.00 / 2.25 bpw versions, 239 / 257 / 274 GB; docs/DEEPSEEK41.md)")
+                         "(the official 1.75 / 2.00 / 2.25 bpw versions, 239 / 257 / 274 GB; docs/DEEPSEEK41.md), nemotron35 = "
+                         "NVIDIA-Nemotron-3.5-Super-VL-120B-A12B (UD-IQ3_XXS, 60 GB; its engine is built from source: docs/NEMOTRON35.md)")
     ap.add_argument("--model", type=model_alias, choices=list(dict.fromkeys([*MODELS, *(m for f in PREVIEW_FAMILIES.values()
                                                                        for m in f["models"]),
-                                                          *(m for f in MULTI_FILE_FAMILIES.values() for m in f["models"])])))
+                                                          *(m for f in MULTI_FILE_FAMILIES.values() for m in f["models"]),
+                                                          *(m for f in NEMOTRON_FAMILIES.values() for m in f["models"])])))
     ap.add_argument("--context", type=int)
     ap.add_argument("--rope-scaling", choices=["none", "linear", "yarn"],
                     help="the RoPE extension for a context past the model's trained 262144: linear (position "
@@ -10307,9 +10428,13 @@ def main() -> int:
                          "sycl = Intel Arc, EXPERIMENTAL: Linux, built from source (docs/INTEL_ARC.md)")
     ap.add_argument("--skip-build", action="store_true", help=argparse.SUPPRESS)
     a = ap.parse_args()
-    if a.model and a.model not in MODELS and a.family not in PREVIEW_FAMILIES and a.family not in MULTI_FILE_FAMILIES:
-        ap.error(f"--model {a.model} is a size of " + ", ".join(f"--family {f}" for f, d in {**PREVIEW_FAMILIES, **MULTI_FILE_FAMILIES}.items()
+    if a.model and a.model not in MODELS and a.family not in PREVIEW_FAMILIES and a.family not in MULTI_FILE_FAMILIES \
+            and a.family not in NEMOTRON_FAMILIES:
+        ap.error(f"--model {a.model} is a size of " + ", ".join(f"--family {f}" for f, d in {**PREVIEW_FAMILIES, **MULTI_FILE_FAMILIES,
+                                                                                             **NEMOTRON_FAMILIES}.items()
                                                               if a.model in d["models"]))
+    if a.family in NEMOTRON_FAMILIES and a.model and a.model not in NEMOTRON_FAMILIES[a.family]["models"]:
+        ap.error(f"--model {a.model}: Nemotron-3.5 has the size " + ", ".join(NEMOTRON_FAMILIES[a.family]["models"]))
     if a.source:
         os.environ["STRATA_SOURCE"] = a.source
     if a.prepare_pack:                                 # an Intel Arc card: the model's pack, nothing else (no engine, no download of the model)
@@ -10359,6 +10484,7 @@ def main() -> int:
         else:
             a.gpu = order[0]
     say("Strata - " + (MULTI_FILE_FAMILIES[a.family]["title"] if a.family in MULTI_FILE_FAMILIES else
+                       NEMOTRON_FAMILIES[a.family]["title"] if a.family in NEMOTRON_FAMILIES else
                        OWN_PATH_FAMILIES[a.family]["title"] if a.family in OWN_PATH_FAMILIES else "Qwen3.8-Flash-Next")
         + " on a normal PC (a GPU + system RAM + CPU)")
     have = installed_configs()
@@ -10375,6 +10501,8 @@ def main() -> int:
 
     if a.rollback_engine:                              # #670
         return rollback_engine(12 if a.cuda == "12" else 13)
+    if a.family in NEMOTRON_FAMILIES and not a.update:   # Nemotron-3.5: its own files, engine and config (install_nemotron)
+        return install_nemotron(a, a.family)
 
     # ---- 0. already installed: just start it
     if a.update:                                       # #475: UPDATE.bat / update.sh - never starts the model

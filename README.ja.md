@@ -23,9 +23,30 @@
 
 <p align="center"><sub><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <b>日本語</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.pl.md">Polski</a></sub></p>
 
+> [!IMPORTANT]
+> **これは非公式の fork です**([shiosalt/Strata](https://github.com/shiosalt/Strata)。元は [Niko1221/Strata](https://github.com/Niko1221/Strata))。**NVIDIA-Nemotron-3.5-Super-VL-120B-A12B** を専用のエンジンで動かす機能を足しています。この部分は Strata の開発者が書いたものでも確認したものでもありません。問題は本家ではなく[こちら](https://github.com/shiosalt/Strata/issues)に報告してください。この README のほかの部分は本家のもので、下のインストーラーとリリースのリンクも本家のものです(Nemotron のエンジンは入っていません)。[モデル](#nemotron-models)を見てください。
+
 **無料でオープンソース。自分の環境で動かせます。** デスクトップで、またはお好みのコーディングツールと一緒に Strata を使えます。アカウントは不要です。
 
 ## モデル
+
+<a id="nemotron-models"></a>
+
+### Nemotron 3.5 Super(この fork)
+
+[NVIDIA-Nemotron-3.5-Super-VL-120B-A12B](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-GGUF): パラメータ 1,200 億(1 トークンあたり 120 億が動く)、画像も読めます。この fork は Unsloth の **UD-IQ3_XXS**(59.8 GB と画像リーダー 1.7 GB)を専用のエンジンで、Terminal から動かします。文章、思考、ツール呼び出し、画像、MTP の下書き、128K / 256K のコンテキストに対応しています。リクエストは 1 件ずつ処理します。
+
+測った PC は 1 台だけです(RTX 5060 Ti 16 GB × 2、Ryzen 7 5700X、RAM 96 GB、Windows 11、128K):
+
+| | 速さ |
+| --- | --- |
+| 生成(短い依頼、温度 1.0、MTP 6) | 24-28 tokens/s |
+| 生成(72K トークンの会話の続き) | 12.7-15.4 tokens/s |
+| 36,529 トークンの prompt の読み込み | 276 tokens/s (132 s) |
+
+導入方法は[インストール](#nemotron-install)にあります。モデルの重みは NVIDIA のもので、そのモデルカードのライセンスに従います(このリポジトリには入っていません)。詳しい説明と測定の全部: [docs/NEMOTRON35.md](docs/NEMOTRON35.md)。
+
+**オリジナルの Strata の機能で、下記のモデルも利用できます:**
 
 まず **ISTA-DASLab** をおすすめします。次に **Unsloth** などの提供元です。メモリに収まる互換モデルがある場合に選べます。
 
@@ -88,6 +109,34 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 
 ## インストール
 
+<a id="nemotron-install"></a>
+
+> [!NOTE]
+> **この fork は Windows でのみ検証しています。Nemotron 3.5 Super は NVIDIA の GPU(CUDA)でのみ動きます。** デスクトップアプリと下の本家のインストーラーでは動きません。このリポジトリの Terminal を使ってください。
+
+**Nemotron 3.5 Super をビルド済みのエンジンで使う(Python 3.10 以降、Git、NVIDIA ドライバー 580 以降が必要):**
+
+1. このリポジトリを取得します: `git clone https://github.com/shiosalt/Strata.git` のあと `cd Strata`。
+2. [Releases](https://github.com/shiosalt/Strata/releases/tag/nemotron-v0.1.0) から `strata-nemotron-0.1.0-windows-x64-cuda13.zip` をダウンロードし、リポジトリのフォルダーに展開します(`engine-nemotron\` ができます)。
+3. Python のパッケージを入れます:
+
+   ```bat
+   python -m venv .venv
+   .venv\Scripts\python.exe -m pip install -r requirements.txt textual==8.2.8
+   ```
+
+4. モデルをダウンロードして(手元のファイルがあれば `--model-path` で指定)起動します:
+
+   ```bat
+   .venv\Scripts\python.exe strata.py launch --family nemotron35 --model UD-IQ3_XXS --yes --no-tui
+   ```
+
+   止めるときは `.venv\Scripts\python.exe strata.py launch --stop`。インストール済みの `strata` コマンドは本家のもので、このモデルを知りません。
+
+エンジンを自分でビルドする場合は(Visual Studio 2022 Build Tools の「C++ によるデスクトップ開発」と CUDA Toolkit 12.8 以降。30 分以上かかります)、手順 2 と 3 の代わりに `powershell -ExecutionPolicy Bypass -File tools\nemotron\build.ps1 -Vision` を実行します。
+
+この節のここから下は本家の説明で、本家のモデル向けです。
+
 <a id="option-a-the-strata-app"></a>
 
 ### デスクトップアプリ
@@ -147,6 +196,13 @@ strata launch
 
 ## ハードウェア
 
+> [!NOTE]
+> **この fork は Windows でのみ検証しています。Nemotron 3.5 Super は NVIDIA の GPU(CUDA)でのみ動きます。**
+
+**Nemotron 3.5 Super:** NVIDIA の GPU で VRAM が合計約 30 GB、RAM 64 GB 以上(下回ると警告しますが、止めはしません)、モデル用にディスク 62 GB。測ったのは RTX 5060 Ti 16 GB × 2、RAM 96 GB の PC だけです。ビルド済みのエンジンは RTX 30(sm_86)、RTX 40(sm_89)、RTX 50(sm_120)向けのコードを含みますが、試したのは RTX 50 だけです。Linux と小さい PC は試していません。
+
+下の表は本家のもので、本家のモデル向けです。
+
 | 対応ハードウェア | ガイド |
 | --- | --- |
 | **NVIDIA GeForce RTX 20 / 30 / 40 / 50 シリーズ** | [NVIDIA のセットアップ](docs/INSTALL.md#what-you-need) |
@@ -176,31 +232,13 @@ strata launch
 
 ## Strata を支援する
 
-**ローカル AI をみんなに開かれたものに。** GitHub でのスポンサーやコーヒー1杯が、開発と、より多くのハードウェアでのテストの支えになります。
+**ローカル AI をみんなに開かれたものに。** 下のリンクは、この fork ではなく **Strata の作者 Niko さん([@Niko1221](https://github.com/Niko1221))** への支援です。Strata を作り、オープンソースで公開してくださった Niko さんに感謝します。この fork は Niko さんの仕事の上に成り立っています。
 
 <a href="https://github.com/sponsors/Niko1221"><img src="https://img.shields.io/badge/Sponsor_on_GitHub-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub Sponsors: Strata を支援する" height="48"></a>
 <a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee: Strata を支援する" height="48"></a>
-
-### いつも支えてくださる方々
-
-Strata を支えてくださるすべての方に感謝します。
-
-<!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
-<a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
-<a href="https://github.com/themactep"><img src="https://github.com/themactep.png?size=96" width="48" height="48" alt="themactep" title="themactep"></a>
-<a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
-<a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
-<a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
-<a href="https://github.com/kod88vn"><img src="https://github.com/kod88vn.png?size=96" width="48" height="48" alt="kod88vn" title="kod88vn"></a>
-<a href="https://github.com/seoulworker"><img src="https://github.com/seoulworker.png?size=96" width="48" height="48" alt="seoulworker" title="seoulworker"></a>
-<a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
-<a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
-<!-- supporters:end -->
 
 [MIT ライセンス](LICENSE) · [クレジットとモデルのライセンス](docs/HOW_IT_WORKS.md#credits) · [プライバシー](docs/SAFETY.md)
 
 <a id="option-c-let-your-ai-set-it-up"></a>
 
 <sub>AI ツールと自動リーダー向け: <a href="AGENTS.md">技術リファレンス</a> · <a href="docs/AI_SETUP.md">セットアップ手順</a></sub>
-
-**スポンサー、ハードウェア提携、共同開発のご相談:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).

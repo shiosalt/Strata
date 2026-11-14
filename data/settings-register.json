@@ -22429,6 +22429,825 @@
    "retired_in": ""
   },
   {
+   "name": "STRATA_NEMO_ATTN_TC",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1164,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1164,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: the prompt attention on the exact fp32 kernel instead of the tensor-core one (attn_tc.cu)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_ATTN_WIN",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/kernels.cu",
+     "line": 711,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/kernels.cu",
+     "line": 711,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/NEMOTRON35.md:117"
+   ],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: the decode / verify window attention per row (the row-split kernel, K / V read once a row) instead of one pass over the cells for every row of the window",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_CHECK",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1100,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1220,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1495,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": "off",
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/NEMOTRON35_PROGRESS.md:219"
+   ],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "debugging: stop at the first non-finite value of a block and say where",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_COPY_OVERLAP",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1537,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1537,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: the decode PCIe copies of missed experts on the compute stream, one after the other, instead of on the second stream overlapping the resident experts",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_CPU_A",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1378,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1378,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "float",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "prompt CPU/GPU balance: the CPU's fixed cost per expert, ms (default 0.125)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_CPU_B",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1379,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1379,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "float",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "prompt CPU/GPU balance: the CPU's cost per row, ms (default 0.03)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_CPU_KERNELS",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/cpu_experts.cpp",
+     "line": 70,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/cpu_experts.cpp",
+     "line": 70,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: the CPU experts use ggml-cpu dot products for every type, instead of their own AVX2 Q2_0 dot (cpu_kernels_avx2.cpp)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_CPU_ROWS",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 978,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "prompt CPU/GPU balance: most rows an expert may have to go to the CPU (default 64)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_CPU_ROWS_ALL",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1970,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1970,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=1: a prompt chunk sends every row of the CPU expert buffer to the GPU after each MoE layer, instead of only the rows the CPU computed",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_DEBUG_PARK",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1902,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "string",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "debugging: read a restored parked conversation back and compare it with the parked copy",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_GPU_SAMPLE",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 2446,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 2446,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 2943,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 2943,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: sampled requests copy every logit and pick the top-k on the host, instead of the GPU top-k (topk.cu)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_GROUPED",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1320,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1320,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: the decode experts one launch per entry instead of the grouped kernel (grouped_mmvq.cu)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_LOAN_TEST",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 857,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": "off",
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "test hook of the prompt-buffer loan (tests/nemotron/engine_parity.cpp)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_PCIE_FRAC",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 970,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "float",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/NEMOTRON35.md:111"
+   ],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "opt-in",
+   "owner": "nemotron",
+   "note": "f0,f1: the share of decode experts each card reads over PCIe, instead of the one measured at start",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_PIN",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 613,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: the experts are not copied into pinned RAM (as --no-pin)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_PIN_ALLOC",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1009,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=1: the experts page-locked with cudaHostAlloc as before (the CPU read them at 10-16 GB/s on Windows) instead of registered ordinary memory (29 GB/s)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_PIPE",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 333,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 333,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: a prompt of several chunks on two GPUs goes one chunk through both GPUs at a time (no prefill pipeline); the same as --no-prefill-pipe",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_PROFILE",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 697,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 697,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "research",
+   "owner": "nemotron",
+   "note": "=1: the decode GPU time per operation and per GPU in the engine log (CUDA events between the operations)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_ROUTE_DUMP",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 3296,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "status": "research",
+   "owner": "nemotron",
+   "note": "=<file>: after every request, a CSV of the decode routing per (layer, expert) since the start and whether each expert is in a VRAM slot (the slot placement study, build/nemotron-run/slot_sim.py)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_SHARE_ADAPT",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 360,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 360,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [
+    "docs/NEMOTRON35.md:119"
+   ],
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: the decode PCIe share stays at the link formula, instead of following the measured waits (as --no-share-adapt)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_SMALL_ROWS",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 707,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "test hook: the prompt buffers' small set in rows (default 256)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_SPEC_SAMPLED",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 2578,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    },
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 2578,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "int",
+   "default_state": null,
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "rollback",
+   "owner": "nemotron",
+   "note": "=0: no MTP drafts at temperature > 0 (speculative sampling off)",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
+   "name": "STRATA_NEMO_ZERO_Q",
+   "backends": [
+    "cuda-hip"
+   ],
+   "reads": [
+    {
+     "file": "src/nemotron/engine.cu",
+     "line": 1461,
+     "backend": "cuda-hip",
+     "fn": "getenv"
+    }
+   ],
+   "parse": "flag",
+   "default_state": "off",
+   "code_default": null,
+   "engine_sets": [],
+   "engine_defaults": [],
+   "launch_files": [],
+   "launch_sets": [],
+   "launch_reads": [],
+   "doc_mentions": [],
+   "first_commit": null,
+   "first_date": null,
+   "since": null,
+   "last_commit": null,
+   "last_date": null,
+   "status": "research",
+   "owner": "nemotron",
+   "note": "debugging: zero the prompt experts' quantized input",
+   "retire_after": "",
+   "retired_in": ""
+  },
+  {
    "name": "STRATA_NIB_GU_PROTO",
    "backends": [
     "cuda-hip"

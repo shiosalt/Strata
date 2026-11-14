@@ -548,7 +548,8 @@ def derive_config(base: dict, s: S.LaunchSettings, *, bool_flags: frozenset[str]
         cfg["api_key"] = "none"                              # served without a key on purpose (the server warns once at start)
     else:
         cfg.pop("api_key", None)
-    chosen = None if s.family == "deepseek41" else s.drafting   # DeepSeek has its own DSpark and no MTP or DFlash2: a Drafting choice left from another model is not written
+    # DeepSeek has its own DSpark and no MTP or DFlash2, Nemotron its own MTP (--mtp N in its args): a Drafting choice left from another model is not written
+    chosen = None if s.family == "deepseek41" or cfg.get("arch") == "nemotron_h_moe" else s.drafting
     if chosen:                                               # strata_control/drafting.py: serve/server.py applies it at every start
         cfg["drafting"] = chosen
     if s.split_engine:                                       # strata_control/split_engine.py: read by apply_split_engine; "off" survives every update
@@ -741,6 +742,9 @@ class Runner:
         self.warn_wsl_amd()
         if self.multi_file():                                # DeepSeek: its own engine package (setup fetches it); the Strata engine is not used
             self.emit("engine", "DeepSeek runs on its own engine package, so the Strata engine is not downloaded for it.", 100)
+            return
+        if self.nemotron():                                  # Nemotron-3.5: its own engine (src/nemotron), built from a source checkout; never downloaded
+            self.ensure_nemotron_engine()
             return
         shape = self.model_shape()
         if shape:                                            # a Qwen4 model of its own shape: its engine is a separate component (strata_control/shape_engine.py)
@@ -1241,7 +1245,7 @@ class Runner:
         env.pop("STRATA_NEED_ENGINE", None)
         if self.engine_problem:
             env["STRATA_ALLOW_NO_ENGINE"] = "1"              # the person said go on: setup warns about the engine instead of stopping
-        elif not self.multi_file():                          # (DeepSeek does not use the Strata engine: nothing to require)
+        elif not (self.multi_file() or self.nemotron()):     # (DeepSeek and Nemotron do not use the Strata engine: nothing to require)
             env["STRATA_NEED_ENGINE"] = "1"
         for k in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV"):
             env.pop(k, None)
@@ -1357,7 +1361,7 @@ class Runner:
     def intel_chosen(self) -> bool:
         """The engine for this launch is the Intel Arc one (chosen with --backend intel, saved, or the only make here), and the model is one
         the built-in downloader sets up for NVIDIA and AMD only: Strata prepares the model files itself instead (adopt_prepared_files)."""
-        if self.multi_file() or sys.platform == "darwin" or WINDOWS:
+        if self.multi_file() or self.nemotron() or sys.platform == "darwin" or WINDOWS:
             return False
         try:
             from strata_control import engine_component
@@ -1522,7 +1526,7 @@ class Runner:
         problem = models.own_path_problem(s.model_path)
         if problem:                                          # before the engine or setup are touched, with the path as typed
             raise LaunchError(problem[0], problem[1], 2)
-        if self.deepseek_files():
+        if self.deepseek_files() or self.nemotron_files():
             return
         given = bool(s.family and s.model)
         try:
@@ -1764,7 +1768,7 @@ class Runner:
         strata_control/split_engine.py's rule, never when the run config says "split_engine": "off" (`--split-engine off`, STRATA_SPLIT_ENGINE=0).
         In auto a "no" is silent and the config stays as it is; with "on" it gets one plain line. It never stops a launch."""
         from strata_control import split_engine as SE
-        if cfg.get("arch") == "deepseek41" or SE.mode(cfg) == "off":
+        if cfg.get("arch") in ("deepseek41", "nemotron_h_moe") or SE.mode(cfg) == "off":
             return
         exe_for = SE.exe_finder(cfg)                         # strata-split-N beside the run config's engine (shared with the app's start)
 
@@ -1860,6 +1864,12 @@ class Runner:
         parallel = self.s.parallel if self.s.parallel else (getattr(self, "four_card_parallel", None) or self.catalog_parallel())
         if getattr(self, "parallel_dropped", False):         # DeepSeek: the engine in use is from before the flag (gate_parallel)
             parallel = None
+        if parallel and self.nemotron():                     # Nemotron's engine answers one request at a time: the others wait, nothing is refused
+            if self.s.parallel and self.s.parallel > 1:
+                text = f"Nemotron-3.5's engine answers one request at a time, so --parallel {self.s.parallel} is not used; the other requests wait their turn."
+                self.notices.append(text)
+                self.emit("config", text, None, level="warn")
+            parallel = None
         if parallel and not self.s.parallel and self.one_request_for_dflash2(config):
             parallel = None                                  # the slots Strata fills in by itself would keep the MTP: DFlash2 answers one request at a time
         if parallel and self.run_config_owns_slots(config):
@@ -1903,8 +1913,50 @@ class Runner:
         except Exception:                                    # noqa: BLE001
             return False
 
+    def nemotron(self) -> bool:
+        """The chosen model is Nemotron-3.5-Super-VL (setup.py NEMOTRON_FAMILIES): three shards, its own engine (built from source), one
+        request at a time, its own MTP drafts; no Strata-engine download, no tuner, no all-cards split engine."""
+        from strata_control import nemotron35
+        return getattr(self.s, "family", None) == nemotron35.FAMILY      # (the name itself: its one family; a test's stand-in settings are never it)
+
+    def ensure_nemotron_engine(self) -> None:
+        """The Nemotron engine is looked for (strata_control/nemotron35.engine_candidates); when it is not there the launch stops here, before
+        a 60 GB download, with the one line that says how to get it."""
+        from strata_control import nemotron35
+        cat = self.catalog
+        exe = nemotron35.find_engine(cat.root, cat.src)
+        if exe is None:
+            raise LaunchError(nemotron35.NOT_BUILT.format(where=Path(cat.root) / "engine-nemotron") + ".",
+                              "Build it in a source checkout (docs/NEMOTRON35.md, 'Build') and set STRATA_NEMOTRON_ENGINE to its strata.exe, "
+                              "or copy it to that folder. Nothing was downloaded or changed.", 3)
+        self.emit("engine", f"Nemotron-3.5 runs on its own engine ({exe}); the Strata engine is not downloaded for it.", 100)
+
+    def nemotron_files(self) -> bool:
+        """--model-path names Nemotron-3.5's shards (the size's folder, the repository folder above it, or one shard): they are that model.
+        True when they are (s.family / s.model / s.model_path set); a shard missing from the folder is said now, before anything is touched."""
+        from strata_control import nemotron35
+        s = self.s
+        try:
+            found = nemotron35.find_set(s.model_path)
+        except OSError:
+            return False
+        if found is None:
+            return False
+        model, folder = found
+        if s.family and s.family != nemotron35.FAMILY:
+            raise LaunchError(f"These are Nemotron-3.5-Super-VL's files, not {s.family} {s.model}'s.",
+                              f"Use --family {nemotron35.FAMILY} (or leave --family and --model out).", 2)
+        missing = nemotron35.missing_parts(folder, model)
+        if missing:
+            raise LaunchError(f"Nemotron-3.5-Super-VL {model} is in three parts and {len(missing)} of them are not in {folder} (or not whole): "
+                              f"first missing: {missing[0]}.",
+                              "Put every part in the folder (or drop --model-path and let Strata download them). Nothing was downloaded or changed.", 5)
+        s.family, s.model, s.model_path = nemotron35.FAMILY, model, str(folder)
+        self.emit("model", f"These files are Nemotron-3.5-Super-VL {model}; they are used where they are.", None)
+        return True
+
     def catalog_parallel(self) -> int | None:
-        if self.multi_file():                                # DeepSeek: one at a time unless --parallel N is asked for (never fitted to the card; and never --batch)
+        if self.multi_file() or self.nemotron():             # DeepSeek: one at a time unless --parallel N is asked for; Nemotron: one at a time
             return None
         try:
             comp = self.catalog.computer()
@@ -1962,6 +2014,10 @@ class Runner:
             return
         if self.multi_file():
             self.tune_deepseek()
+            return
+        if self.nemotron():                                  # its settings were measured on the reference PC (docs/NEMOTRON35_PROGRESS.md); tools/nemotron/calibrate.py measures them here
+            self.emit("tune", "Nemotron-3.5 starts with the settings measured for it (3 MTP drafts, 4096-row prompt chunks, the PCIe share its engine "
+                              "measures at each start). To measure them on this computer: python tools/nemotron/calibrate.py --config <run config>.", 100)
             return
         from strata_control import presets
         if not self.retune:
@@ -2373,6 +2429,8 @@ class Runner:
         from strata_control import discovery
         from strata_control.discovery import MMPROJ_GB, MTP_FETCH_GB
         s = self.s
+        if self.nemotron():
+            return self.nemotron_download_plan()
         st = self.model_state()
         parts = [{"kind": p.kind, "label": p.label, "gb": round(p.gb, 1)} for p in st.parts if p.gb >= 0.05]     # a part already on disk is not a download
         row = self.row()
@@ -2479,6 +2537,37 @@ class Runner:
                      "a small helper (llama.cpp's gguf-py) from GitHub. No draft layer or picture reader is used on Intel cards yet.")
         return {"gb": gb, "parts": parts, "engine_missing": not engine and not here, "engine_usable": engine, "own_files": st.own_files, "text": text}
 
+    def nemotron_download_plan(self) -> dict:
+        """Nemotron-3.5's download for --plan: the shards that are not whole in its folder (the person's own, or <data>/models/<repository>/<size>)
+        and the picture reader when pictures are on; its engine is never downloaded (it is said when it is not on this computer)."""
+        from strata_control import nemotron35 as N
+        s, cat = self.s, self.catalog
+        model = s.model or next(iter(N.MODELS))
+        own = bool(s.model_path)
+        if own:
+            folder = Path(s.model_path)
+        else:
+            data = Path(s.data_dir) if s.data_dir else (self.existing_data_dir() or cat.data_dir())
+            folder = N.folder_for(Path(data) / "models", model)
+        missing = N.missing_parts(folder, model)
+        parts = []
+        gb = sum(N.FILES[n][0] for n in missing) / 1e9
+        if gb >= 0.05:
+            parts.append({"kind": "weights", "label": f"the model ({len(missing)} of 3 parts)", "gb": round(gb, 1)})
+        if s.vision not in ("off",) and N.mmproj_in(folder) is None and not own:
+            parts.append({"kind": "mmproj", "label": "the picture reader", "gb": round(N.FILES[N.MMPROJ][0] / 1e9, 1)})
+        total = round(sum(p["gb"] for p in parts), 1)
+        if total < 0.05:
+            text = "Nothing to download: your model files are used where they are." if own else "Nothing to download: the model is already on this computer."
+        else:
+            text = f"About {total:.1f} GB to download: " + " and ".join(f"{p['label']} ({p['gb']:.1f} GB)" for p in parts) + "."
+            if any(p["kind"] == "mmproj" for p in parts):
+                text += " To skip the picture reader (the model then answers text only), add --vision off."
+        exe = N.find_engine(cat.root, cat.src)
+        if exe is None:
+            text += " " + N.NOT_BUILT.format(where=Path(cat.root) / "engine-nemotron") + ": the launch stops before the download until it is there."
+        return {"gb": total, "parts": parts, "engine_missing": exe is None, "engine_usable": exe is not None, "own_files": own, "text": text}
+
     def ready_pack_gap(self) -> dict | None:
         """For a ready-made pack family (NVFP4): what setup would still fetch into its models folder for these choices, {gb, folder, free_gb}, or None."""
         s = self.s
@@ -2525,6 +2614,13 @@ class Runner:
         self.check_own_files()
         warns = [n.line() for n in (*S.check_access(s),)]
         warns += self.preflight_words()
+        if self.nemotron():                                  # where it fits: warnings, never a refusal (strata_control/nemotron35.fit_lines)
+            try:
+                from strata_control import nemotron35
+                comp = self.catalog.computer()
+                warns += [w[0].upper() + w[1:] + "." for w in nemotron35.fit_lines(comp.ram_gb, list(comp.usable_gpus))]
+            except Exception:                                # noqa: BLE001 - a plan that cannot read the hardware still shows the rest
+                pass
         row = self.row()
         try:
             self.resolved_vision()
@@ -2613,6 +2709,9 @@ class Runner:
             if sys.platform == "darwin":
                 return "Drafting: off (DeepSeek's drafter was not faster on a Mac)"
             return "Drafting: DSpark (used when it speeds up answers on this computer)"
+        if self.nemotron():                                  # the model's own MTP block, 3 drafts a step (prompt lookup on top for text it repeats)
+            from strata_control import nemotron35
+            return f"Drafting: the model's own MTP layer ({nemotron35.DEFAULT_MTP} drafts a step; at temperature 1.0 14.7 tok/s against 10.5 without, measured on 2 x RTX 5060 Ti)"
         try:
             base, cfg = self.installed_state()
             want = self.drafting_inputs(cfg or {})

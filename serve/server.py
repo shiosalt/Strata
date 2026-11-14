@@ -214,6 +214,42 @@ EFFORT_TEXT = {"low": "Reasoning effort is set to low. Keep your thinking brief 
                         "assumptions, consider plausible alternatives, and prioritize correctness, consistency, and "
                         "clarity in the final answer."}
 VISION_START = "<|vision_start|>"
+# NVIDIA-Nemotron-3.5-Super-VL: its template writes one <image> per picture; the model reads <img>, one <image> per image token (the
+# engine puts the picture's rows there), </img> - as llama.cpp's mtmd does for its projector (nemotron_omni).  All three are control
+# tokens, so the same text inside a message is marked as plain text before the template (literal_tags) and every <image> the
+# rendered prompt holds is a picture.
+NEMOTRON_IMAGE, NEMOTRON_IMG_BEGIN, NEMOTRON_IMG_END = "<image>", "<img>", "</img>"
+
+
+def image_markers(arch) -> tuple[str, str | None, tuple[str, str] | None]:
+    """(the placeholder the template writes per picture, the token that must come right before it or None, the (begin, end) the
+    expanded run is wrapped in or None) for the family `arch`: Qwen's <|vision_start|><|image_pad|><|vision_end|> by default."""
+    if arch == "nemotron_h_moe":
+        return NEMOTRON_IMAGE, None, (NEMOTRON_IMG_BEGIN, NEMOTRON_IMG_END)
+    return IMAGE_PAD, VISION_START, None
+
+
+def expand_images(ids, counts, pad: int, start: int | None, wrap: tuple[int, int] | None, literal) -> list:
+    """The prompt with each picture placeholder made its run of image tokens (`counts[k]` for picture k, in prompt order).  A pad that
+    `start` should precede and does not is text (`literal`, its plain-text encoding).  ValueError when the pictures and the prompt's
+    placeholders do not match."""
+    out, k = [], 0
+    for j, t in enumerate(ids):
+        if t == pad and (start is None or (j > 0 and ids[j - 1] == start)):
+            if k == len(counts):
+                raise ValueError("the prompt and its images do not match")
+            run = [pad] * counts[k]
+            out += [wrap[0], *run, wrap[1]] if wrap else run
+            k += 1
+        elif t == pad:
+            out += literal
+        else:
+            out.append(t)
+    if k != len(counts):
+        raise ValueError("the prompt and its images do not match")
+    return out
+
+
 # #606: a reply that repeats one token this many times in a row is ended there ("length"): a model in a loop, or a
 # broken state that answers one token forever (an issue saw 36,689 tokens of "!"). The config's "repeat_stop_tokens"
 # sets it; 0 turns it off.
@@ -5887,8 +5923,10 @@ class Service:
                 self.embeddings.keys = None
                 images, ds_pics = [], True
         if images:
-            pad = self.tok.encode(IMAGE_PAD, parse_special=True)[0]
-            start = self.tok.encode(VISION_START, parse_special=True)[0]
+            pad_text, start_text, wrap_text = image_markers(getattr(self, "model_arch", None))
+            pad = self.tok.encode(pad_text, parse_special=True)[0]
+            start = self.tok.encode(start_text, parse_special=True)[0] if start_text else None
+            wrap = tuple(self.tok.encode(w, parse_special=True)[0] for w in wrap_text) if wrap_text else None
             # Encode only while the engine is idle: the engine and the image encoder (a separate process) must not
             # run on the GPU at the same time - an encode during a running request left that request stuck at
             # "reading the prompt" with CPU and GPU busy, for good (reproduced).  So encoding takes its turn in the
@@ -5904,22 +5942,10 @@ class Service:
             # one <|image_pad|> per image -> one per image token.  Only the markers the template writes for an image
             # (right after <|vision_start|>) are images: the same text inside a message (an agent reading these docs,
             # #150) is kept as plain text, or it took an image's place and the counts no longer matched.
-            literal = self.tok.encode(IMAGE_PAD, parse_special=False)
-            out, k = [], 0
-            for j, t in enumerate(ids):
-                if t == pad and j > 0 and ids[j - 1] == start:
-                    # more pairs than images: text parts that cut both markers apart (the literal marks keep whole ones text)
-                    if k == len(encoded):
-                        raise ValueError("the prompt and its images do not match")
-                    out += [pad] * encoded[k][1]
-                    k += 1
-                elif t == pad:
-                    out += literal
-                else:
-                    out.append(t)
-            if k != len(encoded):
-                raise ValueError("the prompt and its images do not match")
-            ids = out
+            # (more pairs than images: text parts that cut both markers apart; the literal marks keep whole ones text.
+            # Nemotron: <img>, the run, </img> - see image_markers)
+            literal = self.tok.encode(pad_text, parse_special=False)
+            ids = expand_images(ids, [n for _, n in encoded], pad, start, wrap, literal)
         ctx = self.engine.max_context
         if ctx <= 0:
             if getattr(self.engine, "starting", False):   # #344: (re)starting, not a prompt that is too long
@@ -6192,6 +6218,8 @@ class Service:
         parser = self.parser_cls(thinking=thinking, tools=with_history_tools(tools, sampling), stream_tools=True,
                                  recover=self.tool_call_recovery, declared_only=declared_only,
                                  deferred=deferred or self.undeclared_tool_calls == "call")   # #4622: opt-in, as for a deferred tool
+        if getattr(self, "model_arch", None) == "nemotron_h_moe":
+            parser.quoted_think_end = False             # Nemotron ends its thinking with no line break, often after a quote
         detok, n, finish = Detokenizer(self.tok), 0, "length"
         run_tok, run_len, repeated = None, 0, False     # #606: the current run of one repeated token
         thinking_n = 0                                  # tokens written while thinking (Responses' reasoning_tokens)
@@ -9604,7 +9632,7 @@ def check_request_sampling(req) -> None:
 
 # the API's model name per model family (the GGUF architecture, "arch" in the config) when the config names none
 FAMILY_MODEL_NAMES = {"qwen4exp": "qwen3.8-flash-next", "qwen35moe": "qwen3.6-35b-a3b",
-                      "deepseek41": "deepseek-v4.1-flash"}
+                      "deepseek41": "deepseek-v4.1-flash", "nemotron_h_moe": "nemotron-3.5-super-vl-120b-a12b"}
 
 
 # The sampling each model card recommends ("Best Practices"), used when neither the request, the Chat settings nor the
@@ -9619,6 +9647,9 @@ MODEL_CARD_SAMPLING = {
                   "instruct": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "presence_penalty": 1.5}},
     # DeepSeek-V4.1-Flash: temperature 1.0, top_p 1.0 for local use (thinking or not), no penalties
     "deepseek41": {"thinking": {"temperature": 1.0, "top_p": 1.0}, "instruct": {"temperature": 1.0, "top_p": 1.0}},
+    # NVIDIA-Nemotron-3.5-Super-VL: the card's text setting, temperature 1.0 and top_p 0.95 (its GGUF's general.sampling too),
+    # with reasoning on or off (the card's 0.6 is for pictures)
+    "nemotron_h_moe": {"thinking": {"temperature": 1.0, "top_p": 0.95}, "instruct": {"temperature": 1.0, "top_p": 0.95}},
 }
 
 
@@ -9635,6 +9666,8 @@ def arch_from_tokenizer(arch, pre) -> str | None:
     and no DSML tool calls.  The pack's tokenizer says what it is (its pre-tokenizer is "deepseek3"); an arch the config names is never changed."""
     if arch:
         return arch
+    if str(pre or "") == "tekken":       # the only family Strata runs with the Tekken vocabulary: Nemotron-3.5-Super-VL
+        return "nemotron_h_moe"
     return "deepseek41" if str(pre or "").startswith("deepseek") else None
 
 
@@ -10063,8 +10096,9 @@ def _main(argv=None, *, lifecycle_event=None, interrupt_exit_code: int = 0) -> i
             ap.error(f"the model's tokenizer ({tpath}): {e}")
     if a.engine == "strata" and not cfg.get("arch") and arch_from_tokenizer(None, tcfg.get("pre")):
         cfg["arch"] = arch_from_tokenizer(None, tcfg.get("pre"))
-        print(f"[strata] the config names no \"arch\" and this tokenizer is DeepSeek's: serving it as {cfg['arch']} (its end token, DSML tool "
-              f"calls and effort words); add \"arch\": \"{cfg['arch']}\" to the config to say it outright", flush=True)
+        whose = "DeepSeek's" if cfg["arch"] == "deepseek41" else "Nemotron-3.5's (tekken)"
+        print(f"[strata] the config names no \"arch\" and this tokenizer is {whose}: serving it as {cfg['arch']} (its model name and the "
+              f"model card's sampling); add \"arch\": \"{cfg['arch']}\" to the config to say it outright", flush=True)
     hub = hub_from_config(cfg, a.mcp_config)            # before the minutes of loading: a bad entry stops here
     if a.offline and (hub is not None or cfg.get("before_load") or a.before_load):
         ap.error("--offline requires MCP servers and before_load commands to be disabled in this profile")

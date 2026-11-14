@@ -590,16 +590,23 @@ class Strata:
         for f, d in (getattr(s, "OWN_PATH_FAMILIES", None) or {}).items():
             out[f] = {"title": d["title"], "about": d.get("about"), "tag": d["tag"], "license": d.get("license"),
                       "vision": bool(d.get("vision", True)), "own_path": True, **({"feed": True} if d.get("feed") else {})}
-        for f, d in (getattr(s, "MULTI_FILE_FAMILIES", None) or {}).items():     # DeepSeek-V4.1-Flash: nine shards, its own engine
+        for f, d in (getattr(s, "NEMOTRON_FAMILIES", None) or {}).items():       # Nemotron-3.5-Super-VL: three shards, its own engine (built from source)
+            out[f] = {"title": d["title"], "about": d.get("about"), "tag": d["tag"], "license": d.get("license"), "name": d.get("name"),
+                      "vision": True, "own_path": True, "nemotron": True}
+        for f, d in (getattr(s, "MULTI_FILE_FAMILIES", None) or {}).items():     # DeepSeek-V4.1-Flash: nine shards, its own engine (the largest: listed last)
             out[f] = {"title": d["title"], "about": d.get("about"), "tag": d["tag"], "license": d.get("license"),
                       "vision": bool(d.get("vision", False)), "own_path": True, "multi_file": True}
         return out
+
+    def nemotron_family(self, family) -> dict | None:
+        """setup.py's NEMOTRON_FAMILIES entry (Nemotron-3.5-Super-VL), else None."""
+        return (getattr(self.setup_module(), "NEMOTRON_FAMILIES", None) or {}).get(family)
 
     def own_size_names(self) -> list:
         """The size names of the families that have an engine path of their own (Qwen3.6, DeepSeek-V4.1-Flash): the install tool accepts them as `model`."""
         s = self.setup_module()
         names = []
-        for table in ("OWN_PATH_FAMILIES", "MULTI_FILE_FAMILIES"):
+        for table in ("OWN_PATH_FAMILIES", "MULTI_FILE_FAMILIES", "NEMOTRON_FAMILIES"):
             for fam in (getattr(s, table, None) or {}).values():
                 names.extend(n for n in fam.get("models", {}) if n not in names)
         return names
@@ -618,6 +625,9 @@ class Strata:
             return {"about": big["models"][model]["about"], "download_gb": round(gb, 1), "ram_gb": big["models"][model]["ram_gb"],
                     "arena_gb": round(float(big["models"][model]["ram_gb"]) - 17.0, 1), "mem_total": True, "vision": bool(big.get("vision", True)),
                     "engine": None, "families": (family,), "multi_file": True}
+        if self.nemotron_family(family):
+            from strata_control import nemotron35
+            return nemotron35.size_row(model)
         d = (getattr(self.setup_module(), "OWN_PATH_FAMILIES", None) or {}).get(family)
         if not d or model not in d["models"]:
             return None
@@ -629,7 +639,7 @@ class Strata:
 
     def sizes_of(self, models, family) -> list:
         """The family's sizes as setup lists them: an experimental one last (never the default)."""
-        own = (getattr(self.setup_module(), "OWN_PATH_FAMILIES", None) or {}).get(family) or self.multi_family(family)
+        own = (getattr(self.setup_module(), "OWN_PATH_FAMILIES", None) or {}).get(family) or self.multi_family(family) or self.nemotron_family(family)
         if own:
             return list(own["models"])
         return sorted((m for m in models if family in models[m].get("families", ("qwen", "swift"))),
@@ -1711,6 +1721,13 @@ def expected_files(S, family: str, model: str, models_dir: Path, vision: bool) -
             shared = Path(models_dir) / (big["tag"] + "shared")        # the Engram, the drafter and the metadata shard of the official sets
             return ([{"path": str(folder / n), "bytes": big["sha256"][n][0], "role": "model"} for n in big["models"][model]["shards"]]
                     + [{"path": str(shared / n), "bytes": big["sha256"][n][0], "role": "model"} for n in big["models"][model].get("shared", [])])
+        if (getattr(S, "NEMOTRON_FAMILIES", None) or {}).get(family):    # Nemotron-3.5: three shards in <models>/<repository>/<size>, the reader at its top
+            from strata_control import nemotron35 as N
+            folder = N.folder_for(Path(models_dir), model)
+            out = [{"path": str(folder / n), "bytes": N.FILES[n][0], "role": "model"} for n in N.MODELS[model]["shards"]]
+            if vision:
+                out.append({"path": str(folder / N.MMPROJ), "bytes": N.FILES[N.MMPROJ][0], "role": "vision"})
+            return out
         own = (getattr(S, "OWN_PATH_FAMILIES", None) or {}).get(family)
         if own:                                         # Qwen3.6: the GGUF and the picture reader in the model's folder
             folder = Path(models_dir) / (own["tag"] + model)
@@ -2456,6 +2473,9 @@ class Tools:
         target = self.check_data_dir(data_dir) if data_dir else s.data_dir()
         tag = (families[family].get("tag", "") + model)
         have_dir = target / "models" / tag
+        if families[family].get("nemotron"):            # Nemotron-3.5: <models>/<repository>/<size>, the layout a Hub download makes
+            from strata_control import nemotron35
+            have_dir = nemotron35.folder_for(target / "models", model)
         # An Intel Arc (Linux, the SYCL engine): setup.py's `--backend sycl` in its CONTROL mode prepares the model's files and writes the run config, as the
         # Terminal does (strata_control/intel_app.py); it downloads nothing. NVIDIA and AMD never come here.
         arc = backend == "sycl" or (backend in (None, "auto") and any(g.get("vendor") == "intel" for g in hw.get("gpus", [])))

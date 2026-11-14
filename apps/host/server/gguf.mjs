@@ -16,7 +16,7 @@ export function readGGUF(file) {
   function string(keep=true,limit=8*1024**2){const n=u64();if(n>limit)throw new Error('GGUF metadata contains an oversized string.');bounded(n);if(!keep){p+=n;return null;}return bytes(n).toString('utf8');}
   function value(type,keep,depth=0){
    if(type===8)return string(keep);
-   if(type===9){if(depth>4)throw new Error('GGUF metadata arrays are too deeply nested.');const element=u32(),count=u64();if(count>MAX_COUNT)throw new Error('GGUF metadata array is too large.');if(widths[element]){bounded(count*widths[element]);p+=count*widths[element];}else for(let i=0;i<count;i++)value(element,false,depth+1);return {count};}
+   if(type===9){if(depth>4)throw new Error('GGUF metadata arrays are too deeply nested.');const element=u32(),count=u64();if(count>MAX_COUNT)throw new Error('GGUF metadata array is too large.');if(widths[element]){bounded(count*widths[element]);if(keep&&count<=4096&&[0,1,2,3,4,5,10,11].includes(element)){const values=[];for(let i=0;i<count;i++)values.push(value(element,true,depth+1));return {count,values};}p+=count*widths[element];}else for(let i=0;i<count;i++)value(element,false,depth+1);return {count};}
    const w=widths[type];if(!w)throw new Error('GGUF metadata uses an unsupported value type.');const b=bytes(w);if(!keep)return null;
    if(type===0||type===7)return b.readUInt8();if(type===1)return b.readInt8();if(type===2)return b.readUInt16LE();if(type===3)return b.readInt16LE();if(type===4)return b.readUInt32LE();if(type===5)return b.readInt32LE();if(type===6)return b.readFloatLE();if(type===10){const n=b.readBigUInt64LE();if(n>BigInt(Number.MAX_SAFE_INTEGER))throw new Error('GGUF integer is too large.');return Number(n);}if(type===11){const n=b.readBigInt64LE();if(n>BigInt(Number.MAX_SAFE_INTEGER)||n<BigInt(Number.MIN_SAFE_INTEGER))throw new Error('GGUF integer is too large.');return Number(n);}return b.readDoubleLE();
   }
@@ -37,7 +37,7 @@ export function readGGUF(file) {
    const type=u32(),offset=u64(),block=tensorSizes[type];if(!block)throw new Error('This GGUF tensor format is not supported by the importer yet.');if(offset%alignment||elements%block[0])throw new Error('GGUF tensor layout is invalid.');tensorEnd=Math.max(tensorEnd,offset+elements/block[0]*block[1]);parameters+=elements;
   }
   const dataOffset=Math.ceil(p/alignment)*alignment;
-  if(tensorEnd+dataOffset>stat.size)throw new Error('The GGUF file is incomplete. Download all of its weights before adding it.');
+  if(tensorEnd>0&&tensorEnd+dataOffset>stat.size)throw new Error('The GGUF file is incomplete. Download all of its weights before adding it.');
   return {metadata,version,tensorCount,parameters,size:stat.size,mtimeMs:stat.mtimeMs,ctimeMs:stat.ctimeMs};
  } finally {closeSync(fd);}
 }

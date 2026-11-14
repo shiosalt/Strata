@@ -33,6 +33,13 @@ not additional top-level families.
 | Qwen3.8-Flash-Next | Catalog entries in [setup.py](../setup.py), model guides and backend documentation | [MODELS.md](MODELS.md), [QUANTS.md](QUANTS.md), [GYRO.md](GYRO.md), [NVFP4.md](NVFP4.md), [ORCA.md](ORCA.md). <!-- cap:summary:qwen38 -->Qwen3.8-Flash-Next runs in the desktop app and in the Terminal. Hardware: NVIDIA on Windows; NVIDIA on Linux; NVIDIA DGX Spark (GB10); AMD on Windows (RX 6000, 7000 and 9000, Ryzen AI Max); AMD on Linux (RX 6000, 7000 and 9000, Radeon AI PRO R9700, Ryzen AI Max); Intel Arc on Linux (Arc A-series and B-series); Apple silicon (M1 or newer, macOS 15 or newer). Per-hardware limits and measurements: [CAPABILITIES.md](CAPABILITIES.md#qwen38).<!-- /cap --> |
 | Qwen3.6-35B-A3B | `qwen36` in `OWN_PATH_FAMILIES` in [setup.py](../setup.py) | [QWEN36.md](QWEN36.md). <!-- cap:summary:qwen36 -->Qwen3.6-35B-A3B runs in the desktop app and in the Terminal. Hardware: NVIDIA on Windows; NVIDIA on Linux; AMD on Windows; AMD on Linux. Package present but not tested: NVIDIA DGX Spark. Does not run on: Intel Arc on Linux, Apple silicon. Per-hardware limits and measurements: [CAPABILITIES.md](CAPABILITIES.md#qwen36).<!-- /cap --> |
 
+This fork also runs **NVIDIA-Nemotron-3.5-Super-VL-120B-A12B** (`nemotron35` in `NEMOTRON_FAMILIES` in [setup.py](../setup.py),
+table and config writer in [strata_control/nemotron35.py](../strata_control/nemotron35.py)). It is not a release family: its engine
+(`src/nemotron`) is built from a source checkout and found by `STRATA_NEMOTRON_ENGINE` or `build/nemotron-cuda`; `strata launch`
+stops before the download when it is missing. Terminal only (the desktop app's engine does not run it), NVIDIA only, one request at a
+time. Measured only on 2 x RTX 5060 Ti 16 GB with 96 GB of RAM ([MODELS.md](MODELS.md#nemotron-35-super-vl),
+[NEMOTRON35.md](NEMOTRON35.md)). It is not in [CAPABILITIES.md](CAPABILITIES.md), which lists what the release packages carry.
+
 Do not reuse Qwen quant names, model sizes or performance figures for DeepSeek. A field this page does not state is
 **unknown**, not zero and not unsupported. DeepSeek Harness is a coding tool; its presence does not establish support
 for a particular DeepSeek model.
@@ -70,6 +77,7 @@ with the installed release's `strata launch --help` and a plan before a download
 | Qwen3.8-Flash-Next | NVFP4 | `nvfp4` | NVFP4, NVFP4-NVIDIA, NVFP4-QAD; NVIDIA only |
 | Qwen3.8-Flash-Next | OrcaRouter Uncensored | Manual conversion | IQ3_XXS; not an installer menu choice |
 | Qwen3.6-35B-A3B | Unsloth | `qwen36` | UD-Q4_K_XL, UD-Q6_K_XL, Q8_0 |
+| Nemotron-3.5-Super-VL (this fork, engine from source) | Unsloth | `nemotron35` | UD-IQ3_XXS (59.8 GB + 1.7 GB picture reader); `UD-IQ3_XXS` is also an Unsloth Qwen size, so always pass `--family nemotron35` |
 
 ## Hardware and sizing
 

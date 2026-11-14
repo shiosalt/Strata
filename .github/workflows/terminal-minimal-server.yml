@@ -30,6 +30,7 @@ permissions:
 
 jobs:
   fake-engine:
+    if: github.repository == 'Niko1221/Strata'   # (fork: upstream's automation does not run here)
     name: Linux / runtime requirements only
     runs-on: ubuntu-latest
     timeout-minutes: 20

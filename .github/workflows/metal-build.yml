@@ -20,6 +20,7 @@ permissions:
 
 jobs:
   metal-link:
+    if: github.repository == 'Niko1221/Strata'   # (fork: upstream's automation does not run here)
     # the macOS 26 SDK: metal/src/mtl_rt.mm names MTLGPUFamilyMetal4 (and MTLCompileOptions.mathMode, macOS 15) behind @available,
     # which is a run-time check; the names must still be in the SDK the engine is compiled against
     runs-on: macos-26

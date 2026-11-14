@@ -1,11 +1,12 @@
 ﻿# Which model? Sizes, versions and what fits
 
 This page helps you choose a model and check that your computer can run it. It covers DeepSeek V4.1-Flash,
-Qwen3.8-Flash-Next (and its variants) and Qwen3.6-35B-A3B. For installing, see [INSTALL.md](INSTALL.md).
+Qwen3.8-Flash-Next (and its variants), Qwen3.6-35B-A3B and, in this fork, Nemotron-3.5-Super-VL (engine built from source).
+For installing, see [INSTALL.md](INSTALL.md).
 
 > **On this page:** [Quick start](#quick-start) · [Pick by memory](#pick-by-memory) ·
 > [DeepSeek V4.1-Flash](#deepseek-v41-flash) · [Qwen3.8-Flash-Next](#qwen38-flash-next) ·
-> [Qwen3.6-35B-A3B](#qwen36-35b-a3b) · [Adding or switching models](#adding-or-switching-models) ·
+> [Qwen3.6-35B-A3B](#qwen36-35b-a3b) · [Nemotron-3.5-Super-VL](#nemotron-35-super-vl) · [Adding or switching models](#adding-or-switching-models) ·
 > [History](#history--older-measurements)
 
 ## Quick start
@@ -290,6 +291,36 @@ Pictures, parallel requests, full measurements and limits: [QWEN36.md](QWEN36.md
 ```sh
 strata launch --family qwen36 --model UD-Q4_K_XL
 ```
+
+## Nemotron-3.5-Super-VL
+
+NVIDIA-Nemotron-3.5-Super-VL-120B-A12B (120 billion parameters, 12 billion active per token, 512 experts, a mix of Mamba
+and attention layers, reads pictures). Strata runs Unsloth's UD-IQ3_XXS GGUF on an engine of its own (`src/nemotron`).
+**This engine is not in the release packages yet.** It is built from a source checkout ([NEMOTRON35.md](NEMOTRON35.md#ビルド)),
+then the Terminal sets the model up (`--family nemotron35`). The desktop app does not run it. NVIDIA cards only.
+
+| Size | Download | RAM + VRAM for the model | In plain words |
+| --- | ---: | ---: | --- |
+| **UD-IQ3_XXS** | 59.8 GB (+ 1.7 GB picture reader) | 64 GB of RAM and two 16 GB cards were enough | 3-bit (Unsloth Dynamic) |
+
+**Measured on:** 2 x RTX 5060 Ti 16 GB, Ryzen 7 5700X, 96 GB RAM, Windows, 128K context.
+
+| Test (2026-11-13 to 14, 6 MTP drafts, `--mtp-slots 64`) | Speed |
+| --- | ---: |
+| Decode, a short request, temperature 1.0, thinking off | 24-28 tokens/s |
+| Decode, 72K tokens into a conversation, temperature 1.0 | 12.7-15.4 tokens/s |
+| Prompt, 36,529 tokens (both cards on different chunks at once) | 276 tokens/s |
+
+A smaller PC was not tried. Setup warns below 64 GB of RAM or 30 GB of graphics memory; it does not refuse. One request at a
+time. Full measurements, the engine's options and the limits: [NEMOTRON35.md](NEMOTRON35.md).
+
+```bat
+powershell -ExecutionPolicy Bypass -File tools\nemotron\build.ps1 -Vision
+.venv\Scripts\python.exe strata.py launch --plan --family nemotron35 --model UD-IQ3_XXS
+.venv\Scripts\python.exe strata.py launch --family nemotron35 --model UD-IQ3_XXS --yes --no-tui
+```
+
+(This checkout's Terminal: the installed `strata` command is upstream's and does not know this family.)
 
 ## Adding or switching models
 

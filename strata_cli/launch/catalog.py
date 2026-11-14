@@ -370,7 +370,15 @@ class Catalog:
         if family and self.strata.multi_family(family):
             from strata_control import dsv41_context
             return dsv41_context.choices(self.pack_limit(family, model))
+        if family == "nemotron35":                        # Nemotron-3.5: its engine was checked up to 256K (docs/NEMOTRON35_PROGRESS.md)
+            from strata_control import nemotron35
+            return [c for c in self.contexts() if 4096 <= c <= nemotron35.CONTEXTS["256k"]] or list(nemotron35.CONTEXTS.values())
         return self.contexts()
+
+    def nemotron(self, family: str | None) -> bool:
+        """The family is Nemotron-3.5-Super-VL (setup.py NEMOTRON_FAMILIES): its own engine, files and config writer."""
+        from strata_control import nemotron35
+        return family == nemotron35.FAMILY
 
     def pack_limit(self, family: str | None, model: str | None) -> int | None:
         """The installed DeepSeek pack's own context limit (ds4.txt), None when it is not installed or the file does not say."""
@@ -396,8 +404,8 @@ class Catalog:
         own = self.strata.own_families()                # Qwen3.6 is listed for the app; the Terminal's launch list is Flash-Next's
         dsv41 = None
         for fam in self.strata.model_table(hw):
-            if fam["family"] in own and not own[fam["family"]].get("multi_file"):
-                continue
+            if fam["family"] in own and not (own[fam["family"]].get("multi_file") or own[fam["family"]].get("nemotron")):
+                continue                                # (Nemotron-3.5 is listed: the Terminal is the way it is set up, docs/NEMOTRON35.md)
             for size in fam["sizes"]:
                 f = fit_on(size, hw.get("ram_gb"), vram)
                 if size.get("multi_file"):            # DeepSeek-V4.1-Flash: shared over every card (strata_control/dsv41_fit.py)
@@ -480,6 +488,9 @@ class Catalog:
         only in case is found (#3996). When none exists yet it is setup's own name, because that is where the download will go."""
         _m, families, _c, _s = self.tables()
         models = Path(base) / "models"
+        if family == "nemotron35":                         # Nemotron-3.5: <models>/<repository>/<size> (setup.install_nemotron)
+            from strata_control import nemotron35
+            return nemotron35.folder_for(models, model)
         own = models / (families[family].get("tag", "") + model)
         lower = models / self.tag_of(family, model)
         for candidate in (own, lower):

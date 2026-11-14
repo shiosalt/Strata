@@ -95,3 +95,6 @@ node_modules/
 /build-spark/
 /build-vision-spark/
 /.venv-build/
+.venv-nemotron/
+# the fork's ready-made Nemotron engine, unzipped into the checkout (README, "Install")
+/engine-nemotron/

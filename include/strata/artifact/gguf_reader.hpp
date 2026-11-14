@@ -333,6 +333,9 @@ struct MetaValue {
     double num() const { return (type == MetaType::F32 || type == MetaType::F64) ? f : (double)u; }
 };
 
+/// A numeric metadata list up to this long is kept whole in MetaValue::items (longer ones, and string lists, keep 64 entries).
+constexpr uint64_t kMetaNumericListKeep = 4096;
+
 inline MetaValue read_value(Cursor& c, MetaType t, int depth = 0) {
     if (depth > 2) throw std::runtime_error("GGUF: array nesting too deep");
     MetaValue v;
@@ -381,10 +384,15 @@ inline MetaValue read_value(Cursor& c, MetaType t, int depth = 0) {
         v.elem = (MetaType)c.read<uint32_t>();
         v.count = c.read<uint64_t>();
         if (v.count > (1u << 24)) throw std::runtime_error("GGUF: implausible array length");
-        v.items.reserve((size_t)std::min<uint64_t>(v.count, 64));
+        // keep a sample (the count is what matters for the token lists); a short NUMERIC list is kept whole: the per-block lists of
+        // nemotron_h_moe (attention.head_count_kv, feed_forward_length: 89 entries) are read entry by entry.  Lists of up to 64 entries,
+        // every list of the other families, are kept exactly as before.
+        const bool numeric = v.elem != MetaType::STRING && v.elem != MetaType::ARRAY;
+        const uint64_t keep = numeric && v.count <= kMetaNumericListKeep ? v.count : 64;
+        v.items.reserve((size_t)std::min<uint64_t>(v.count, keep));
         for (uint64_t i = 0; i < v.count; ++i) {
             MetaValue e = read_value(c, v.elem, depth + 1);
-            if (i < 64) v.items.push_back(std::move(e)); // keep a sample; the count is what matters
+            if (i < keep) v.items.push_back(std::move(e));
         }
         break;
     }
@@ -664,6 +672,34 @@ inline std::string check_architecture_qwen35moe(const GgufFile& g) {
     return {};
 }
 
+/// NVIDIA-Nemotron-3.5-Super-VL's guard (nemotron_h_moe): every key the geometry is read from is present (the numbers are numbers, the
+/// two per-layer lists have one entry for each block); the shape arithmetic is checked by strata::nemotron::geometry_from_gguf.
+inline std::string check_architecture_nemotron_h_moe(const GgufFile& g) {
+    static const char* const keys[] = {
+        "nemotron_h_moe.block_count", "nemotron_h_moe.embedding_length", "nemotron_h_moe.attention.head_count",
+        "nemotron_h_moe.attention.key_length", "nemotron_h_moe.attention.value_length", "nemotron_h_moe.expert_count",
+        "nemotron_h_moe.expert_used_count", "nemotron_h_moe.expert_feed_forward_length",
+        "nemotron_h_moe.expert_shared_feed_forward_length", "nemotron_h_moe.moe_latent_size", "nemotron_h_moe.ssm.conv_kernel",
+        "nemotron_h_moe.ssm.state_size", "nemotron_h_moe.ssm.group_count", "nemotron_h_moe.ssm.time_step_rank",
+        "nemotron_h_moe.ssm.inner_size", "nemotron_h_moe.nextn_predict_layers",
+    };
+    for (const char* k : keys) {
+        const MetaValue* v = g.get(k);
+        if (!v) return std::string("missing ") + k;
+        if (!v->is_num()) return std::string(k) + " is not a number";
+    }
+    const uint64_t blocks = g.get("nemotron_h_moe.block_count")->u;
+    if (g.get("nemotron_h_moe.nextn_predict_layers")->u >= blocks)
+        return "nemotron_h_moe.nextn_predict_layers is not smaller than nemotron_h_moe.block_count";
+    for (const char* k : {"nemotron_h_moe.attention.head_count_kv", "nemotron_h_moe.feed_forward_length"}) {
+        const MetaValue* v = g.get(k);
+        if (!v) return std::string("missing ") + k;
+        if (v->type != MetaType::ARRAY || v->count != blocks || v->items.size() != blocks)
+            return std::string(k) + " must list one entry for each of the " + std::to_string(blocks) + " blocks";
+    }
+    return {};
+}
+
 // ---- the model's geometry from its metadata, and the architecture guard (P1.S2).  The engine runs ONE
 // architecture, qwen4exp.  Its dimensions are read from the file (llama.cpp's key names under the arch prefix)
 // and then checked against the shape the kernels are compiled for (core/geometry.hpp), so a file of another
@@ -851,6 +887,7 @@ inline std::string check_architecture(const GgufFile& f) {
     if (!arch) return "missing general.architecture";
     const ModelFamily family = model_family_from_arch(arch->s);
     if (family == ModelFamily::Qwen35Moe) return check_architecture_qwen35moe(f);
+    if (family == ModelFamily::NemotronHMoe) return check_architecture_nemotron_h_moe(f);
     core::ModelGeometry g;   // anything else is refused by name by read_geometry
     std::string err = read_geometry(f, g);
     if (err.empty()) err = geometry_unsupported(g);

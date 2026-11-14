@@ -23,9 +23,30 @@
 
 <p align="center"><sub><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <b>Português</b> · <a href="README.pl.md">Polski</a></sub></p>
 
+> [!IMPORTANT]
+> **Este é um fork não oficial** ([shiosalt/Strata](https://github.com/shiosalt/Strata)) de [Niko1221/Strata](https://github.com/Niko1221/Strata). Ele adiciona o **NVIDIA-Nemotron-3.5-Super-VL-120B-A12B** com um motor próprio. Os desenvolvedores do Strata não escreveram nem revisaram esta parte: relate problemas com ela [aqui](https://github.com/shiosalt/Strata/issues), não no projeto original. O resto deste README é do projeto original, assim como os instaladores e os links de versões abaixo (eles não trazem o motor do Nemotron). Veja [Modelos](#nemotron-models).
+
 **Gratuito, de código aberto e seu para executar.** Use o Strata no desktop ou com suas ferramentas de programação favoritas. Não precisa de conta.
 
 ## Modelos
+
+<a id="nemotron-models"></a>
+
+### Nemotron 3.5 Super (este fork)
+
+[NVIDIA-Nemotron-3.5-Super-VL-120B-A12B](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-GGUF): 120 bilhões de parâmetros, 12 bilhões ativos por token, lê imagens. Este fork roda o **UD-IQ3_XXS** da Unsloth (59,8 GB mais um leitor de imagens de 1,7 GB) com um motor próprio, no Terminal. Texto, raciocínio, chamadas de ferramentas, imagens, rascunhos MTP e contexto de 128K / 256K funcionam. Ele atende uma requisição por vez.
+
+Medido em um único PC (2 × RTX 5060 Ti 16 GB, Ryzen 7 5700X, 96 GB de RAM, Windows 11, contexto de 128K):
+
+| | Velocidade |
+| --- | --- |
+| Geração, pedido curto (temperatura 1,0, MTP 6) | 24-28 tokens/s |
+| Geração, a 72K tokens de uma conversa | 12.7-15.4 tokens/s |
+| Leitura de um prompt de 36.529 tokens | 276 tokens/s (132 s) |
+
+Como instalar: [Instalação](#nemotron-install). Os pesos são da NVIDIA, sob a licença do cartão do modelo; este repositório não traz nenhum. Detalhes e todas as medições (em japonês): [docs/NEMOTRON35.md](docs/NEMOTRON35.md).
+
+**Com os recursos originais do Strata, também é possível usar estes modelos:**
 
 Recomendamos **primeiro a ISTA-DASLab**, depois a **Unsloth** e outros provedores, quando um modelo compatível cabe na memória.
 
@@ -88,6 +109,34 @@ Não sabe o que cabe? [Escolha um modelo para o seu computador](docs/MODELS.md#p
 
 ## Instalação
 
+<a id="nemotron-install"></a>
+
+> [!NOTE]
+> **Este fork foi verificado apenas no Windows. O Nemotron 3.5 Super roda apenas em GPUs NVIDIA (CUDA).** O aplicativo de desktop e os instaladores originais abaixo não o rodam: use o Terminal deste repositório.
+
+**Nemotron 3.5 Super com o motor pronto (precisa de Python 3.10+, Git e um driver NVIDIA 580 ou mais novo):**
+
+1. Baixe este repositório: `git clone https://github.com/shiosalt/Strata.git` e depois `cd Strata`.
+2. Baixe `strata-nemotron-0.1.0-windows-x64-cuda13.zip` em [Releases](https://github.com/shiosalt/Strata/releases/tag/nemotron-v0.1.0) e descompacte na pasta do repositório (isso cria `engine-nemotron\`).
+3. Instale os pacotes Python:
+
+   ```bat
+   python -m venv .venv
+   .venv\Scripts\python.exe -m pip install -r requirements.txt textual==8.2.8
+   ```
+
+4. Baixe o modelo (ou indique seus arquivos com `--model-path`) e inicie:
+
+   ```bat
+   .venv\Scripts\python.exe strata.py launch --family nemotron35 --model UD-IQ3_XXS --yes --no-tui
+   ```
+
+   `.venv\Scripts\python.exe strata.py launch --stop` para o servidor. O comando `strata` instalado é do projeto original e não conhece este modelo.
+
+Para compilar o motor você mesmo (Visual Studio 2022 Build Tools com "Desenvolvimento para desktop com C++" e CUDA Toolkit 12.8 ou mais novo; 30 minutos ou mais), rode `powershell -ExecutionPolicy Bypass -File tools\nemotron\build.ps1 -Vision` no lugar das etapas 2 e 3.
+
+O resto desta seção é do projeto original, para os modelos dele.
+
 <a id="option-a-the-strata-app"></a>
 
 ### Aplicativo de desktop
@@ -147,6 +196,13 @@ Siga as instruções para baixar e iniciar um modelo. [Guia do Terminal](docs/TE
 
 ## Hardware
 
+> [!NOTE]
+> **Este fork foi verificado apenas no Windows. O Nemotron 3.5 Super roda apenas em GPUs NVIDIA (CUDA).**
+
+**Nemotron 3.5 Super:** GPUs NVIDIA com cerca de 30 GB de VRAM no total, 64 GB de RAM ou mais (abaixo disso ele avisa, mas não recusa) e 62 GB de disco para o modelo. Medido apenas com 2 × RTX 5060 Ti 16 GB e 96 GB de RAM. O motor pronto traz código para RTX 30 (sm_86), RTX 40 (sm_89) e RTX 50 (sm_120); só a RTX 50 foi testada. Linux e PCs menores não foram testados.
+
+A tabela abaixo é do projeto original, para os modelos dele.
+
 | Hardware compatível | Guia |
 | --- | --- |
 | **NVIDIA GeForce RTX 20 / 30 / 40 / 50** | [Instalação para NVIDIA](docs/INSTALL.md#what-you-need) |
@@ -176,31 +232,13 @@ Execute **`strata connect`** para ver as instruções da sua ferramenta. [Guia d
 
 ## Apoie o Strata
 
-**Ajude a manter a IA local aberta para todos.** Um patrocínio no GitHub ou um café ajuda a financiar o desenvolvimento e os testes em mais hardware.
+**Ajude a manter a IA local aberta para todos.** Estes links apoiam **Niko ([@Niko1221](https://github.com/Niko1221)), o autor do Strata**, e não este fork. Obrigado, Niko, por escrever o Strata e compartilhá-lo como código aberto: este fork foi construído sobre o seu trabalho.
 
 <a href="https://github.com/sponsors/Niko1221"><img src="https://img.shields.io/badge/Sponsor_on_GitHub-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub Sponsors: apoie o Strata" height="48"></a>
 <a href="https://buymeacoffee.com/strataengine"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee: apoie o Strata" height="48"></a>
-
-### Apoiadores fiéis
-
-Obrigado a todas as pessoas que apoiam o Strata.
-
-<!-- supporters:start (one line per public supporter, newest last; copy a line and change the GitHub name in all four places) -->
-<a href="https://github.com/ryan4yin"><img src="https://github.com/ryan4yin.png?size=96" width="48" height="48" alt="ryan4yin" title="ryan4yin"></a>
-<a href="https://github.com/themactep"><img src="https://github.com/themactep.png?size=96" width="48" height="48" alt="themactep" title="themactep"></a>
-<a href="https://github.com/macintog"><img src="https://github.com/macintog.png?size=96" width="48" height="48" alt="macintog" title="macintog"></a>
-<a href="https://github.com/bisonbet"><img src="https://github.com/bisonbet.png?size=96" width="48" height="48" alt="bisonbet" title="bisonbet"></a>
-<a href="https://github.com/vizv"><img src="https://github.com/vizv.png?size=96" width="48" height="48" alt="vizv" title="vizv"></a>
-<a href="https://github.com/kod88vn"><img src="https://github.com/kod88vn.png?size=96" width="48" height="48" alt="kod88vn" title="kod88vn"></a>
-<a href="https://github.com/seoulworker"><img src="https://github.com/seoulworker.png?size=96" width="48" height="48" alt="seoulworker" title="seoulworker"></a>
-<a href="https://github.com/jackyini"><img src="https://github.com/jackyini.png?size=96" width="48" height="48" alt="jackyini" title="jackyini"></a>
-<a href="https://github.com/router0mail"><img src="https://github.com/router0mail.png?size=96" width="48" height="48" alt="router0mail" title="router0mail"></a>
-<!-- supporters:end -->
 
 [Licença MIT](LICENSE) · [Créditos e licenças dos modelos](docs/HOW_IT_WORKS.md#credits) · [Privacidade](docs/SAFETY.md)
 
 <a id="option-c-let-your-ai-set-it-up"></a>
 
 <sub>Para ferramentas de IA e leitores automáticos: <a href="AGENTS.md">referência técnica</a> · <a href="docs/AI_SETUP.md">instruções de instalação</a>.</sub>
-
-**Patrocínios, parcerias de hardware ou colaborações:** [niko.veit@outlook.com](mailto:niko.veit@outlook.com).

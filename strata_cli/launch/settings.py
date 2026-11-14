@@ -235,6 +235,10 @@ def check_parallel(s: LaunchSettings, *, vram_gb: float | None, fitted: int | No
         out.append(Notice("error", f"{s.parallel} requests at once is outside what the engine can do (1 to 8).",
                           "Pick a number from 1 to 8."))
         return out
+    if s.family == "nemotron35" and int(s.parallel) > 1:   # its engine answers one request at a time (runner.ensure_profile leaves the number out)
+        out.append(Notice("warn", f"Nemotron-3.5's engine answers one request at a time, so --parallel {s.parallel} is not used.",
+                          "The other requests wait their turn; nothing is refused."))
+        return out
     fitted = fit_parallel(vram_gb) if fitted is None else fitted
     if vram_gb and s.parallel > fitted:
         out.append(Notice("warn", f"{s.parallel} requests at once is more than a {vram_gb:.0f} GB card usually holds "

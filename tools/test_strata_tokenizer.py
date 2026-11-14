@@ -1,4 +1,4 @@
-"""Tests for tools/strata_tokenizer.py: llama.cpp's reference vectors, the piece cache (0.1.41: the ids are the ones the
+﻿"""Tests for tools/strata_tokenizer.py: llama.cpp's reference vectors, the piece cache (0.1.41: the ids are the ones the
 merge loop gives, cache cold, warm or switched off), and the incremental prompt encoder, which must give exactly the
 ids of a plain encode.
 
@@ -448,3 +448,50 @@ class PreTokenizerType(unittest.TestCase):
         seq = [ST.regex.compile(x) for x in ST.DEEPSEEK3_PATTERNS]
         self.assertEqual(d._split(text), ST._sequence_findall(seq, text))
         self.assertEqual(ST.Tokenizer(toks, [], None, "deepseek-v3")._split(text), d._split(text))
+
+
+class TekkenPreTokenizer(unittest.TestCase):
+    """NVIDIA-Nemotron-3.5-Super-VL's `tekken` rule (llama.cpp LLAMA_VOCAB_PRE_TYPE_TEKKEN): accepted, split by its own pattern,
+    and `ignore_merges` (a whole pre-token that is a vocabulary entry is one token)."""
+
+    def test_kind_and_split(self):
+        self.assertEqual(ST.pre_tokenizer_kind("tekken"), "tekken")
+        toks = [chr(i) for i in range(32, 127)] + ["\n"]
+        t = ST.Tokenizer(toks, [], None, "tekken")
+        text = "Hello, World 123 x_y\n\nCamelCase don't HTTPServer"
+        self.assertEqual(t._split(text), ST.regex.compile(ST.TEKKEN_PATTERN).findall(text))
+        # one digit per piece (\p{N}, not \p{N}{1,3}); CamelCase is cut at the case change; the contraction stays with its word
+        self.assertEqual(t._split("123"), ["1", "2", "3"])
+        self.assertEqual(t._split("CamelCase"), ["Camel", "Case"])
+        self.assertEqual(t._split("HTTPServer"), ["HTTPServer"])      # the greedy upper-case run takes "HTTPS", the lower-case run the rest: one piece
+        self.assertNotEqual(t._split(text), ST.Tokenizer(toks, [], None, "qwen35")._split(text))
+
+    def test_ignore_merges(self):
+        # vocabulary: the bytes, "ab", "abc"; merges only build "ab".  "abc" is a vocabulary entry, so as a whole pre-token it is
+        # ONE token (ignore_merges) although the merges alone would give "ab" + "c".
+        toks = ["a", "b", "c", "ab", "abc"]
+        t = ST.Tokenizer(toks, ["a b"], None, "tekken")
+        self.assertEqual(t.encode("abc"), [4])
+        q = ST.Tokenizer(toks, ["a b"], None, "qwen35")
+        self.assertEqual(q.encode("abc"), [3, 2])           # the other rules are unchanged
+
+    def test_real_nemotron_vocabulary(self):
+        """With the real GGUF's metadata shard (about 10 MB, no weights) when it is on this PC: round trip, the end token, and
+        the chat markers as single tokens.  Skipped elsewhere."""
+        p = os.environ.get("STRATA_NEMOTRON_GGUF", "")   # the first shard (...-00001-of-00003.gguf)
+        if not p or not os.path.exists(p):
+            self.skipTest("STRATA_NEMOTRON_GGUF does not name the Nemotron GGUF's first shard")
+        tk = ST.Tokenizer.from_gguf(p)
+        self.assertEqual(tk.pre, "tekken")
+        self.assertEqual(len(tk.tokens), 131072)
+        self.assertEqual(tk.special_ids.get("tokenizer.ggml.eos_token_id"), 11)
+        self.assertEqual(tk.tokens[11], "<|im_end|>")
+        self.assertEqual(tk.encode("<|im_end|>", parse_special=True), [11])
+        self.assertEqual(len(tk.encode("<|im_start|>", parse_special=True)), 1)
+        self.assertEqual(len(tk.encode("<think>")), 1)               # a USER_DEFINED marker is one token with or without parse_special
+        corpus = ["", "Hello, world!", "  lead and trail  ", "a\n\n\nb", "def f(x):\n\treturn x  # c\n", "你好，世界", "مرحبا",
+                  "日本語のテキストです。", "😀🚀🇺🇸", "e\u0301 combining", "\x00\x01\x7f", "1234567890", "CamelCaseHTTPServer", "\r\n\r\n",
+                  "<tool_call>\n<function=f>\n<parameter=a>\n1\n</parameter>\n</function>\n</tool_call>", "x" * 3000]
+        for s in corpus:
+            with self.subTest(s[:20]):
+                self.assertEqual(tk.decode(tk.encode(s)), s)

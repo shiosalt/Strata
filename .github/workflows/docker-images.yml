@@ -45,6 +45,7 @@ env:
 
 jobs:
   plan:
+    if: github.repository == 'Niko1221/Strata'   # (fork: upstream's automation does not run here)
     runs-on: ubuntu-24.04
     outputs:
       flavors: ${{ steps.list.outputs.flavors }}
@@ -68,6 +69,7 @@ jobs:
           echo "flavors=[$flavors]" >> "$GITHUB_OUTPUT"
 
   image:
+    if: github.repository == 'Niko1221/Strata'   # (fork: upstream's automation does not run here)
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 120

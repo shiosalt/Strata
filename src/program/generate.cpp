@@ -138,6 +138,9 @@
 #if defined(STRATA_HAVE_QWEN35)
 #include "strata/qwen35/engine.hpp"
 #endif
+#if defined(STRATA_HAVE_NEMOTRON)
+#include "strata/nemotron/run.hpp"
+#endif
 #if defined(_WIN32)
 #include <windows.h>
 #include <psapi.h>
@@ -3306,7 +3309,11 @@ int main(int argc, char** argv) {
         }
         // `strata --families`: the GGUF architectures this build runs (setup asks before it installs one)
         if (std::strcmp(argv[i], "--families") == 0) {
-#if defined(STRATA_HAVE_QWEN35)
+#if defined(STRATA_HAVE_NEMOTRON) && defined(STRATA_HAVE_QWEN35)
+            std::printf("qwen4exp qwen35moe nemotron_h_moe\n");
+#elif defined(STRATA_HAVE_NEMOTRON)
+            std::printf("qwen4exp nemotron_h_moe\n");
+#elif defined(STRATA_HAVE_QWEN35)
             std::printf("qwen4exp qwen35moe\n");
 #else
             std::printf("qwen4exp\n");
@@ -3380,6 +3387,20 @@ int main(int argc, char** argv) {
             // not readable here: the normal path below reports it
         }
         if (qwen35) return strata::qwen35::run(argc, argv);
+        break;
+    }
+#endif
+#if defined(STRATA_HAVE_NEMOTRON)
+    // NVIDIA-Nemotron-3.5-Super-VL (nemotron_h_moe): its own engine path (src/nemotron), the same way
+    for (int i = 1; i + 1 < argc; ++i) {
+        if (std::strcmp(argv[i], "--native") != 0 && std::strcmp(argv[i], "--model") != 0) continue;
+        bool nemotron = false;
+        try {
+            const strata::GgufFile meta(strata::gguf_split_paths(argv[i + 1]).front());
+            nemotron = strata::model_family(meta) == strata::ModelFamily::NemotronHMoe;
+        } catch (const std::exception&) {
+        }
+        if (nemotron) return strata::nemotron::run(argc, argv);
         break;
     }
 #endif

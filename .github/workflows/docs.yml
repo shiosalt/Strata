@@ -51,6 +51,7 @@ concurrency:
 
 jobs:
   docs:
+    if: github.repository == 'Niko1221/Strata'   # (fork: upstream's automation does not run here)
     name: Links, release manifest, capability table
     runs-on: ubuntu-24.04
     timeout-minutes: 10

@@ -330,6 +330,8 @@ def _parallel_word(plan: dict, s: S.LaunchSettings) -> str:
     if plan.get("placement"):
         k = (plan.get("parallel") or {}).get("conversations")
         return f"{k} conversations at the same time" if k else "one at a time"
+    if s.family == "nemotron35":                         # its engine answers one request at a time (the others wait)
+        return "one at a time"
     return str(s.parallel or "fit to your card")
 
 

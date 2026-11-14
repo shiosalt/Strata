@@ -46,6 +46,7 @@ concurrency:
 
 jobs:
   snapshot:
+    if: github.repository == 'Niko1221/Strata'   # (fork: upstream's automation does not run here)
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30

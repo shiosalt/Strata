@@ -171,6 +171,7 @@ class Launch(unittest.TestCase):
         fake.s.family = "q4lite-test"
         fake.catalog.strata.setup_module.return_value = mock.Mock(FAMILIES=families)
         fake.multi_file.return_value = False
+        fake.nemotron.return_value = False
         return R, fake
 
     def test_model_shape_reads_the_family_entry(self):

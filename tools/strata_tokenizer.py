@@ -1,4 +1,4 @@
-"""tools/strata_tokenizer.py - the tokenizer, as the reference implementation of record.
+﻿"""tools/strata_tokenizer.py - the tokenizer, as the reference implementation of record.
 
 WHY THIS EXISTS AND WHERE IT SITS.  The GGUF carries the whole tokenizer in metadata: `tokenizer.ggml.model`
 = `gpt2`, 248,320 `tokens`, 247,587 `merges`, `token_type`, `pre` = `qwen35`, and a Jinja `chat_template`.
@@ -65,6 +65,22 @@ QWEN35_PATTERN = (
     r"|\s+"
 )
 
+# The `tekken` pre-tokenizer (Mistral's Tekken vocabulary, which NVIDIA-Nemotron-3.5-Super-VL uses): transcribed from llama.cpp's
+# `src/llama-vocab.cpp`, `case LLAMA_VOCAB_PRE_TYPE_TEKKEN` (pin 3cf03257f219afbe7334045ff7c6a06ac68c627d), the ACTIVE expression and not
+# the commented `tokenizer.json` original (which spells the case classes with \p{Lu} / \p{Ll}; llama.cpp's lookahead form is what its
+# own tokenizer runs).  Two more things come with the type in llama.cpp and are part of the rule here: `ignore_merges` (a pre-token that
+# is already a whole vocabulary entry is that token, no merges applied; see Tokenizer._encode_plain) and `clean_spaces = false`
+# (a detokenizer matter: decode() never cleans spaces).  llama.cpp's groups capture; here they do not (findall must return the whole match).  The GGUF's own add_bos_token (False for Nemotron) decides the BOS, not this.
+TEKKEN_PATTERN = (
+    r"[^\r\n\p{L}\p{N}]?(?:(?=[\p{L}])[^a-z])*(?:(?=[\p{L}])[^A-Z])+"
+    r"|[^\r\n\p{L}\p{N}]?(?:(?=[\p{L}])[^a-z])+(?:(?=[\p{L}])[^A-Z])*"
+    r"|\p{N}"
+    r"| ?[^\s\p{L}\p{N}]+[\r\n/]*"
+    r"|\s*[\r\n]+"
+    r"|\s+(?!\S)"
+    r"|\s+"
+)
+
 
 # The `deepseek-v3` pre-tokenizer (DeepSeek-V3 / V4.1; llama.cpp LLAMA_VOCAB_PRE_TYPE_DEEPSEEK3_LLM, the same regex list as
 # JoyAI and Hunyuan-dense).  UNLIKE the single-pattern families it is a SEQUENCE: each pattern splits the pieces the
@@ -107,6 +123,8 @@ def pre_tokenizer_kind(pre) -> str | None:
     p = "qwen35" if pre is None or pre == "" else str(pre)
     if p == "qwen35":
         return "qwen35"
+    if p == "tekken":
+        return "tekken"
     if p.startswith("deepseek"):
         return "deepseek3"
     return None
@@ -142,9 +160,14 @@ class Tokenizer:
         if pre_tokenizer_kind(pre) == "deepseek3":
             seq = [regex.compile(x) for x in DEEPSEEK3_PATTERNS]
             self._split = lambda text: _sequence_findall(seq, text)
+        elif pre_tokenizer_kind(pre) == "tekken":
+            self._re = regex.compile(TEKKEN_PATTERN)
+            self._split = self._re.findall
         else:
             self._re = regex.compile(QWEN35_PATTERN)
             self._split = self._re.findall
+        # llama.cpp's ignore_merges for the types that set it (tekken): a whole pre-token that is a vocabulary entry is that one token
+        self._ignore_merges = pre_tokenizer_kind(pre) == "tekken"
 
         # The literals matched directly instead of being run through BPE.  GGUF token types: 3 = CONTROL,
         # 4 = USER_DEFINED.  The two classes behave DIFFERENTLY and llama.cpp's own tokenizer settled which:
@@ -283,8 +306,9 @@ class Tokenizer:
             got = cache.get(piece)
             if got is None:
                 mapped = "".join(BYTE_TO_UNICODE[b] for b in piece.encode("utf-8"))
+                whole = self.ids.get(mapped) if self._ignore_merges else None
                 got = []
-                for tok in self._bpe(mapped):
+                for tok in ([mapped] if whole is not None else self._bpe(mapped)):
                     i = self.ids.get(tok)
                     if i is None:
                         raise KeyError("BPE produced a token outside the vocabulary: %r" % tok)
@@ -498,8 +522,10 @@ def extract(gguf_path, out_dir) -> dict:
         "add_bos_token": False,
         # The pattern is SHIPPED, not recomputed by the reader: it is transcribed from llama.cpp for the
         # declared `pre` type, and a C++ port that re-derived it would be free to get `\p{M}` wrong again.
-        "pre_pattern": QWEN35_PATTERN,
-        "pre_pattern_source": ".ref/llama.cpp src/llama-vocab.cpp L396 (LLAMA_VOCAB_PRE_TYPE_QWEN35)",
+        "pre_pattern": TEKKEN_PATTERN if pre_tokenizer_kind(tk.pre) == "tekken" else QWEN35_PATTERN,
+        "pre_pattern_source": ("src/llama-vocab.cpp LLAMA_VOCAB_PRE_TYPE_TEKKEN (ignore_merges)"
+                               if pre_tokenizer_kind(tk.pre) == "tekken"
+                               else ".ref/llama.cpp src/llama-vocab.cpp L396 (LLAMA_VOCAB_PRE_TYPE_QWEN35)"),
     }
     (out / "vocab.json").write_text(json.dumps(tk.ids, ensure_ascii=False), encoding="utf-8")
     (out / "merges.txt").write_text("\n".join("%s %s" % k for k, _ in

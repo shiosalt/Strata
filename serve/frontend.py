@@ -1174,6 +1174,11 @@ class OutputParser:
     """Incremental parser of the model's text. Feed deltas; get events. A tag split across deltas is held back
     until it is complete, so clients never see `<tool_` or `</thi`."""
 
+    # #537: a `</think>` right after a quote and not followed by a line break is the model quoting the tag (the Qwen models end their
+    # thinking with a line break).  Nemotron-3.5 ends it with no line break, often right after a quoted draft ('..."</think>The answer'):
+    # the server turns this off for that family.
+    quoted_think_end = True
+
     def __init__(self, thinking: bool = True, tools: list[dict] | None = None, stream_tools: bool = False,
                  recover: bool = False, declared_only: bool = False, deferred: bool = False):
         self.state = "reasoning" if thinking else "content"
@@ -1435,6 +1440,8 @@ class OutputParser:
         thinking: written right after a quote or backtick and followed by anything but a line break, as in `</think>`
         or "</think>...".  The end of the thinking is followed by a line break.  None while the character after the
         tag has not arrived."""
+        if not self.quoted_think_end:
+            return False
         before = self.buf[i - 1] if i else self.line[-1:]
         if before not in ('"', "'", "`"):
             return False
