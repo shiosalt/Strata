@@ -34,6 +34,21 @@ class FamilyOrder(unittest.TestCase):
         self.assertEqual(fams, ["qwen", "swift", "coder", "unsloth", "gyro"])
         self.assertIn("nvfp4", setup.FAMILIES)             # --family nvfp4 still exists, and says why not
 
+    def test_nemotron_is_in_the_menu_on_nvidia_only(self):
+        # (the fork's Nemotron-3.5: after the families with an engine path of their own, before the signed feed's late ones)
+        rest = setup.menu_rest(False, ["late-one"])
+        self.assertIn("nemotron35", rest)
+        self.assertEqual(rest[-1], "late-one")
+        self.assertLess(rest.index("deepseek41") if "deepseek41" in rest else -1, rest.index("nemotron35"))
+        self.assertNotIn("nemotron35", setup.menu_rest(True, []))
+        self.assertFalse(set(setup.menu_rest(False, [])) - set(setup.menu_rest(True, [])) - {"nemotron35"})
+
+    def test_the_nemotron_line_says_whether_its_engine_is_here(self):
+        with mock.patch.object(setup.nemotron35, "find_engine", return_value=Path("engine-nemotron/strata.exe")):
+            self.assertIn("engine found", setup.nemotron_menu_note())
+        with mock.patch.object(setup.nemotron35, "find_engine", return_value=None):
+            self.assertIn("ready-made engine", setup.nemotron_menu_note())
+
     def test_the_unsloth_line_names_the_alternative_on_amd_and_intel(self):
         self.assertIn("UD-IQ4_XS", setup.family_menu_note("unsloth", True, None))
         self.assertEqual(setup.family_menu_note("unsloth", False, {"arch": 86}), "")

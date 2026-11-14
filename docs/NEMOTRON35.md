@@ -68,6 +68,8 @@ sm_120)向けのコードが入っていますが、試したのは RTX 50 だ�
   `--parallel N` は使いません(このエンジンは 1 件ずつ答え、残りは待ちます)。`--kv` も使いません(K / V は BF16)。
   チューニング(`--tune`)の代わりに下の `calibrate.py` があります。
 - setup.py からも同じことができます: `python setup.py --family nemotron35 --model UD-IQ3_XXS --no-start`(`--gguf-dir` で手元のファイル)。
+  `START-HERE.bat` / `SETUP.bat` の「Step 2: your choices」のメニューにも出ます(NVIDIA の GPU のときだけ。エンジンが見つかったかを
+  行の末尾に書きます)。step 1 で選んだカードがすべて使われます。
   設定は `strata-nemotron35-ud-iq3_xxs.json`。トークナイザと expert プロファイルは `<データフォルダ>\nemotron\nemotron35-ud-iq3_xxs\`。
 - アプリの「手元のモデルを追加」も `nemotron_h_moe` の GGUF を読めます(層ごとのヘッド数の配列に対応)。ただしアプリが同梱する
   エンジンはこのモデルを動かせないので、読み込みでエラーになります。今は Terminal を使ってください。

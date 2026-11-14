@@ -1026,7 +1026,7 @@ MULTI_FILE_FAMILIES["deepseek41"]["models"] = {
 # NVIDIA-Nemotron-3.5-Super-VL-120B-A12B (GGUF architecture nemotron_h_moe), Unsloth's UD-IQ3_XXS: a family with an engine of its own
 # (src/nemotron, strata-nemotron, built from a source checkout) that reads the three shards as they are, plus the picture reader.  The table and
 # the config writer are strata_control/nemotron35.py (shared with `strata launch` and tools/nemotron/make_config.py); installed by
-# install_nemotron.  Offered by name (--family nemotron35), not in the menu: there is no ready-made engine for it yet.
+# install_nemotron.  By name (--family nemotron35) or in step 2's menu (NVIDIA only; the engine is the fork's ready-made zip or a build).
 NEMOTRON_FAMILIES = {nemotron35.FAMILY: nemotron35.entry()}
 
 # Every model file Strata downloads has a fixed size and SHA-256: (repository, file name) -> (bytes, sha256).  download()
@@ -9446,6 +9446,31 @@ def dsv41_cards(gpu: dict, all_cards: list | None, asked: bool) -> list:
     return list(all_cards)
 
 
+def menu_rest(hip: bool, feed_late: list) -> list:
+    """Step 2's menu after menu_families(): the families with an engine path of their own, then the signed feed's late ones.  The fork's
+    Nemotron-3.5 is among them on NVIDIA; on an AMD / Intel card it is said (runs on NVIDIA only), never offered."""
+    nemo = [] if hip else list(NEMOTRON_FAMILIES)
+    return [*(f for f in OWN_PATH_FAMILIES if not OWN_PATH_FAMILIES[f].get("feed")), *MULTI_FILE_FAMILIES, *nemo,
+            *(f for f in OWN_PATH_FAMILIES if OWN_PATH_FAMILIES[f].get("feed")), *feed_late]
+
+
+def nemotron_shard_folder(cfg_path: Path) -> str | None:
+    """The folder of a Nemotron-3.5 run config's shards (its --native file), when it is still there."""
+    try:
+        args = json.loads(Path(cfg_path).read_text(encoding="utf-8-sig")).get("args", [])
+        first = Path(args[args.index("--native") + 1])
+    except (OSError, ValueError, IndexError, TypeError):
+        return None
+    return str(first.parent) if first.is_file() else None
+
+
+def nemotron_menu_note() -> str:
+    """The menu line's note for Nemotron-3.5: where its engine is, or that it is not on this computer yet (the choice is still offered:
+    install_nemotron then says how to get it, before any download)."""
+    exe = nemotron35.find_engine(home(), ROOT)
+    return "   (NVIDIA only; engine found)" if exe else "   (NVIDIA only; needs the fork's ready-made engine or a build, see README 'Install')"
+
+
 def install_nemotron(a, family) -> int:
     """NVIDIA-Nemotron-3.5-Super-VL-120B-A12B (NEMOTRON_FAMILIES): where it fits (warnings, never a refusal), the engine (built from a source
     checkout; it is looked for, never downloaded), the three pinned shards and the picture reader (or your own, --gguf-dir), the tokenizer and
@@ -9468,7 +9493,8 @@ def install_nemotron(a, family) -> int:
         return 0
     if exe is None:
         fail(N.NOT_BUILT.format(where=home() / "engine-nemotron"),
-             "build it with: cmake --build build/nemotron-cuda --target strata (docs/NEMOTRON35.md), or set STRATA_NEMOTRON_ENGINE to its strata.exe")
+             "unzip strata-nemotron-<version>-windows-x64-cuda13.zip from https://github.com/shiosalt/Strata/releases into this folder, "
+             "or build it: powershell -ExecutionPolicy Bypass -File tools\\nemotron\\build.ps1 -Vision (or set STRATA_NEMOTRON_ENGINE to its strata.exe)")
     ok(f"engine: {exe}")
     try:
         context = N.context_of(a.context)
@@ -10518,6 +10544,8 @@ def main() -> int:
                     "copy the same way - the model files are reused, nothing big is downloaded.")
                 a.family, a.model, a.context = ch["family"], ch["model"], a.context or ch["context"]
                 adopted = prev
+                if a.family in NEMOTRON_FAMILIES and not a.gguf_dir:   # (its shards where the earlier install read them: nothing downloaded)
+                    a.gguf_dir = nemotron_shard_folder(prev)
                 a.kv = a.kv or ch["kv"]
                 a.vision = a.vision or ch["vision"]
                 a.experimental_speed_projection = a.experimental_speed_projection or ch["esp"]
@@ -10820,11 +10848,14 @@ def main() -> int:
             say(f"  {i}) {d['title']:20s} {d['by']} - {d['about']}" + ("   [experimental]" if d.get("experimental") else "")
                 + family_menu_note(f, hip, gpu, avx2, avx512)
                 + (f"   (recommended for Strix Halo: {STRIX_HALO_MODEL})" if f == rec_fam and rec_fam != fams[0] else ""))
-        rest = [*(f for f in OWN_PATH_FAMILIES if not OWN_PATH_FAMILIES[f].get("feed")), *MULTI_FILE_FAMILIES,
-                *(f for f in OWN_PATH_FAMILIES if OWN_PATH_FAMILIES[f].get("feed")), *feed_late]
+        rest = menu_rest(hip, feed_late)
         for j, f in enumerate(rest, len(fams) + 1):    # families with an engine path of their own
-            d = {**FAMILIES, **OWN_PATH_FAMILIES, **MULTI_FILE_FAMILIES}[f]
-            say(f"  {j}) {d['title']:20s} {d['by']} - {d['about']}   [new]" + (f"   ({FEED_UNAVAILABLE[f]['reason']})" if f in FEED_UNAVAILABLE else ""))
+            d = {**FAMILIES, **OWN_PATH_FAMILIES, **MULTI_FILE_FAMILIES, **NEMOTRON_FAMILIES}[f]
+            say(f"  {j}) {d['title']:20s} {d['by']} - {d['about']}   [new]" + (f"   ({FEED_UNAVAILABLE[f]['reason']})" if f in FEED_UNAVAILABLE else "")
+                + (nemotron_menu_note() if f in NEMOTRON_FAMILIES else ""))
+        if hip:
+            for d in NEMOTRON_FAMILIES.values():
+                say(f"  -) {d['title']:20s} {d['by']} - runs on NVIDIA cards (CUDA) only")
         for u in FEED_UNAVAILABLE.values():            # a feed model this engine does not run: said, never offered (unless the owner's rule allows it, above)
             if not u.get("allowed"):
                 say(f"  -) {u['title']:20s} {u['by']} - {u['reason']}")
@@ -10833,6 +10864,10 @@ def main() -> int:
             say("  " + tier_note(ram, low_ram_vram(gpu)))
         family = allf[int(ask("Which model?", [str(i) for i in range(1, len(allf) + 1)],
                               str(allf.index(rec_fam) + 1), a.yes)) - 1]
+    if family in NEMOTRON_FAMILIES:                    # Nemotron-3.5 (this fork): its own files, engine and config
+        if multi and not a.gpus:                       # every card step 1 chose (its layer split), in nvidia-smi's order as with --family
+            a.gpus, a.gpu = ",".join(str(i) for i in sorted(multi)), None
+        return install_nemotron(a, family)
     if family in OWN_PATH_FAMILIES:                    # Qwen3.6: its own engine path, its own steps 2-7
         return install_own_path(a, family, gpu, hip, amd, cuda_tk, multi, port, ram, adopted)
     if family in MULTI_FILE_FAMILIES:                  # DeepSeek-V4.1-Flash: nine shards, its own engine, several cards
