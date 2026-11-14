@@ -107,8 +107,8 @@ Set-Content -Path (Join-Path $eng "README.txt") -Value $readme -Encoding UTF8
 $clean = ($env:PATH -split ';' | Where-Object { $_ -and $_ -notmatch 'CUDA' }) -join ';'
 $fam = & cmd /c "set `"PATH=$clean`" && `"$eng\strata.exe`" --families" 2>&1 | Out-String
 if ($fam -notmatch "nemotron_h_moe") { Fail "the packaged strata.exe did not list nemotron_h_moe without the CUDA toolkit on PATH: $fam" }
-$vis = & cmd /c "set `"PATH=$clean`" && `"$eng\strata-vision.exe`" --help" 2>&1 | Out-String
-if ($LASTEXITCODE -eq -1073741515) { Fail "the packaged strata-vision.exe misses a DLL" }
+& cmd /c "set `"PATH=$clean`" && `"$eng\strata-vision.exe`" --help >nul 2>&1"   # (it answers an unknown argument; it must only start)
+if ($LASTEXITCODE -eq -1073741515) { Fail "the packaged strata-vision.exe misses a DLL (0xC0000135)" }
 $sums = Get-ChildItem $eng -File | Sort-Object Name | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name }
 Set-Content -Path (Join-Path $eng "SHA256SUMS.txt") -Value $sums -Encoding ASCII
 New-Item -ItemType Directory -Force -Path (Join-Path $Root $Out) | Out-Null
