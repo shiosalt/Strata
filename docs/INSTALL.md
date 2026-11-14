@@ -1,5 +1,13 @@
 # Install Strata
 
+> [!IMPORTANT]
+> **This is an unofficial fork** ([shiosalt/Strata](https://github.com/shiosalt/Strata)) of
+> [Niko1221/Strata](https://github.com/Niko1221/Strata). It adds one model,
+> **NVIDIA-Nemotron-3.5-Super-VL-120B-A12B**, on an engine of its own. The Strata maintainers did not write
+> or review it: report problems with it [here](https://github.com/shiosalt/Strata/issues), not upstream.
+> <br>To install, read [How to install it in README.md](/readme.md) . <br>
+> Below is Niko1221's original text.
+> 
 This page is for anyone installing or updating Strata (version 0.2.13). Use the **desktop app** for a graphical
 interface, or the **Terminal** for `strata launch` and coding tools. Both use released engine packages. A normal
 install does not need a source checkout or a startup `.bat` file.
@@ -36,7 +44,7 @@ hardware drivers. Models and updates need an internet connection to download.
 
 ## The app
 
-1. Open the [latest release](https://github.com/Niko1221/Strata/releases/latest).
+1. Open the [latest release](https://github.com/shiosalt/Strata/releases/latest).
 2. Download the one installer for your system. There is one per system, not one per graphics card:
    - **Windows:** run `Strata-0.2.13-windows-x64-setup.exe`. It installs for your user and needs no administrator rights.
    - **Linux:** make `Strata-0.2.13-linux-x86_64.AppImage` executable, then open it. If FUSE is unavailable, run the

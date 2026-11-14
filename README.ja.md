@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Strata をダウンロード"></a>
+  <a href="https://github.com/shiosalt/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Strata をダウンロード"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="MIT ライセンス"></a>
   <a href="https://github.com/sponsors/Niko1221"><img src="https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=fff" alt="GitHub Sponsors で Strata を支援する"></a>
   <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Buy Me a Coffee で Strata を支援する"></a>
@@ -32,7 +32,7 @@
 
 <a id="nemotron-models"></a>
 
-### Nemotron 3.5 Super(この fork)
+### <img src="docs\media\models\nvidia-color.svg" width="32" alt="nvidia" align="middle"> &nbsp;Nemotron 3.5 Super(この fork)
 
 [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-GGUF): パラメータ 1,200 億(1 トークンあたり 120 億が動く)、画像も読めます。この fork は Unsloth の **UD-IQ3_XXS**(59.8 GB と画像リーダー 1.7 GB)を専用のエンジンで、Terminal から動かします。文章、思考、ツール呼び出し、画像、MTP の下書き、128K / 256K のコンテキストに対応しています。リクエストは 1 件ずつ処理します。
 
@@ -141,7 +141,7 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 
 ### デスクトップアプリ
 
-**[Windows、Linux、Mac 用の Strata をダウンロード →](https://github.com/Niko1221/Strata/releases/latest)**
+**[Windows、Linux、Mac 用の Strata をダウンロード →](https://github.com/shiosalt/Strata/releases/latest)**
 
 アプリをインストールし、モデルを選んで、チャットを始めましょう。インストーラーはシステムごとに1つです。初回起動時に、アプリがお使いのグラフィックスカード用のエンジンをダウンロードします。[インストーラーのヘルプ](docs/INSTALL.md#the-app)。
 
@@ -164,13 +164,13 @@ Strata 0.2.5 で 2.00 bpw のセットを使って測定しました。「出力
 **Linux / Mac**
 
 ```sh
-curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+curl -fsSL https://github.com/shiosalt/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
 ```
 
 **Windows PowerShell**
 
 ```powershell
-irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+irm https://github.com/shiosalt/Strata/releases/latest/download/install.ps1 | iex
 ```
 
 Windows では、インストール後に新しいターミナルを開きます。そのあと:

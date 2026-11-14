@@ -4,5 +4,6 @@ Small Qwen and DeepSeek marks from [LobeHub Icons](https://github.com/lobehub/lo
 
 - [Qwen source](https://github.com/lobehub/lobe-icons/blob/master/packages/static-svg/icons/qwen-color.svg)
 - [DeepSeek source](https://github.com/lobehub/lobe-icons/blob/master/packages/static-svg/icons/deepseek-color.svg)
+- [Nvidia source](https://github.com/lobehub/lobe-icons/blob/master/packages/static-svg/icons/nvidia-color.svg)
 
 The icon library is [MIT licensed](LICENSE), copyright 2023 LobeHub. Model names and brand marks belong to their respective owners.

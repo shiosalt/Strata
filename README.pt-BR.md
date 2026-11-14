@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Baixar o Strata"></a>
+  <a href="https://github.com/shiosalt/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Baixar o Strata"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="Licença MIT"></a>
   <a href="https://github.com/sponsors/Niko1221"><img src="https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=fff" alt="Apoie o Strata no GitHub Sponsors"></a>
   <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Apoie o Strata no Buy Me a Coffee"></a>
@@ -32,7 +32,7 @@
 
 <a id="nemotron-models"></a>
 
-### Nemotron 3.5 Super (este fork)
+### <img src="docs\media\models\nvidia-color.svg" width="32" alt="nvidia" align="middle"> &nbsp; Nemotron 3.5 Super (este fork)
 
 [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-GGUF): 120 bilhões de parâmetros, 12 bilhões ativos por token, lê imagens. Este fork roda o **UD-IQ3_XXS** da Unsloth (59,8 GB mais um leitor de imagens de 1,7 GB) com um motor próprio, no Terminal. Texto, raciocínio, chamadas de ferramentas, imagens, rascunhos MTP e contexto de 128K / 256K funcionam. Ele atende uma requisição por vez.
 
@@ -141,7 +141,7 @@ O resto desta seção é do projeto original, para os modelos dele.
 
 ### Aplicativo de desktop
 
-**[Baixar o Strata para Windows, Linux ou Mac →](https://github.com/Niko1221/Strata/releases/latest)**
+**[Baixar o Strata para Windows, Linux ou Mac →](https://github.com/shiosalt/Strata/releases/latest)**
 
 Instale o aplicativo, escolha um modelo e comece a conversar. Há um instalador por sistema. Na primeira vez que abre, o aplicativo baixa o motor da sua placa de vídeo. [Ajuda com o instalador](docs/INSTALL.md#the-app).
 
@@ -164,13 +164,13 @@ Prefere o terminal? Instale o Strata e execute **`strata launch`**.
 **Linux / Mac**
 
 ```sh
-curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+curl -fsSL https://github.com/shiosalt/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
 ```
 
 **Windows PowerShell**
 
 ```powershell
-irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+irm https://github.com/shiosalt/Strata/releases/latest/download/install.ps1 | iex
 ```
 
 No Windows, abra um novo terminal depois. Em seguida:

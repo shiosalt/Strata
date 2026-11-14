@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Pobierz Stratę"></a>
+  <a href="https://github.com/shiosalt/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Pobierz Stratę"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="Licencja MIT"></a>
   <a href="https://github.com/sponsors/Niko1221"><img src="https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=fff" alt="Wesprzyj Stratę na GitHub Sponsors"></a>
   <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Wesprzyj Stratę na Buy Me a Coffee"></a>
@@ -32,7 +32,7 @@
 
 <a id="nemotron-models"></a>
 
-### Nemotron 3.5 Super (ten fork)
+### <img src="docs\media\models\nvidia-color.svg" width="32" alt="nvidia" align="middle"> &nbsp; Nemotron 3.5 Super (ten fork)
 
 [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-GGUF): 120 mld parametrów, 12 mld aktywnych na token, czyta obrazy. Ten fork uruchamia **UD-IQ3_XXS** od Unsloth (59,8 GB oraz czytnik obrazów 1,7 GB) na własnym silniku, w Terminalu. Działają tekst, myślenie, wywołania narzędzi, obrazy, szkice MTP i kontekst 128K / 256K. Odpowiada na jedno żądanie naraz.
 
@@ -144,7 +144,7 @@ Dalsza część tej sekcji pochodzi z oryginału i dotyczy jego modeli.
 
 ### Aplikacja na komputer
 
-**[Pobierz Stratę dla Windows, Linuxa lub Maca →](https://github.com/Niko1221/Strata/releases/latest)**
+**[Pobierz Stratę dla Windows, Linuxa lub Maca →](https://github.com/shiosalt/Strata/releases/latest)**
 
 Zainstaluj aplikację, wybierz model i zacznij rozmawiać. Dla każdego systemu jest jeden instalator. Przy pierwszym
 uruchomieniu aplikacja pobiera silnik dla twojej karty graficznej. [Pomoc z instalatorem](docs/INSTALL.md#the-app).
@@ -168,13 +168,13 @@ Wolisz terminal? Zainstaluj Stratę, a potem uruchom **`strata launch`**.
 **Linux / Mac**
 
 ```sh
-curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+curl -fsSL https://github.com/shiosalt/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
 ```
 
 **Windows PowerShell**
 
 ```powershell
-irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+irm https://github.com/shiosalt/Strata/releases/latest/download/install.ps1 | iex
 ```
 
 W Windows otwórz potem nowe okno terminala. Następnie:

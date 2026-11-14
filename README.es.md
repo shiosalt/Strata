@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Niko1221/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Descargar Strata"></a>
+  <a href="https://github.com/shiosalt/Strata/releases/latest"><img src="https://img.shields.io/github/v/release/Niko1221/Strata?label=download&color=0ab887" alt="Descargar Strata"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Niko1221/Strata" alt="Licencia MIT"></a>
   <a href="https://github.com/sponsors/Niko1221"><img src="https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=fff" alt="Patrocina Strata en GitHub Sponsors"></a>
   <a href="https://buymeacoffee.com/strataengine"><img src="https://img.shields.io/badge/Buy_me_a_coffee-FFDD00?logo=buymeacoffee&logoColor=000" alt="Apoya Strata en Buy Me a Coffee"></a>
@@ -32,7 +32,7 @@
 
 <a id="nemotron-models"></a>
 
-### Nemotron 3.5 Super (este fork)
+### <img src="docs\media\models\nvidia-color.svg" width="32" alt="nvidia" align="middle"> &nbsp; Nemotron 3.5 Super (este fork)
 
 [NVIDIA-Nemotron-3.5-Super-VL-120B-A12B](https://huggingface.co/unsloth/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-GGUF): 120 000 millones de parámetros, 12 000 millones activos por token, lee imágenes. Este fork ejecuta **UD-IQ3_XXS** de Unsloth (59,8 GB más un lector de imágenes de 1,7 GB) con un motor propio, en la Terminal. Funcionan texto, razonamiento, llamadas a herramientas, imágenes, borradores MTP y contexto de 128K / 256K. Responde a una petición cada vez.
 
@@ -141,7 +141,7 @@ El resto de esta sección es del proyecto original, para sus modelos.
 
 ### Aplicación de escritorio
 
-**[Descargar Strata para Windows, Linux o Mac →](https://github.com/Niko1221/Strata/releases/latest)**
+**[Descargar Strata para Windows, Linux o Mac →](https://github.com/shiosalt/Strata/releases/latest)**
 
 Instala la aplicación, elige un modelo y empieza a chatear. Hay un instalador por sistema. En el primer arranque, la aplicación descarga el motor para tu tarjeta gráfica. [Ayuda con el instalador](docs/INSTALL.md#the-app).
 
@@ -164,13 +164,13 @@ Instala la aplicación, elige un modelo y empieza a chatear. Hay un instalador p
 **Linux / Mac**
 
 ```sh
-curl -fsSL https://github.com/Niko1221/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
+curl -fsSL https://github.com/shiosalt/Strata/releases/latest/download/install.sh -o install.sh && sh install.sh
 ```
 
 **Windows PowerShell**
 
 ```powershell
-irm https://github.com/Niko1221/Strata/releases/latest/download/install.ps1 | iex
+irm https://github.com/shiosalt/Strata/releases/latest/download/install.ps1 | iex
 ```
 
 En Windows, abre una terminal nueva después. Luego:
