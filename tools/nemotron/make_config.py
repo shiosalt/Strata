@@ -70,7 +70,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--model-dir", required=True, type=Path, help="the folder of the GGUF shards (and the mmproj)")
     ap.add_argument("--context", choices=sorted(CONTEXTS), default="128k")
-    ap.add_argument("--mtp", type=int, default=N.DEFAULT_MTP, help="MTP drafts per step, 0..7 (measured at temperature 1.0: 0/2/3/4 drafts 10.5/13.6/14.7/13.1 tok/s)")
+    ap.add_argument("--mtp", type=int, default=N.DEFAULT_MTP, help="MTP drafts per step, 0..7 (measured at temperature 1.0 with the MTP slots: 3 drafts 15 tok/s, 6 drafts 21 tok/s)")
     ap.add_argument("--chunk", type=int, default=N.DEFAULT_CHUNK, help="prompt rows per forward (4096: a 3,218-token prompt 156 tok/s against 93 at 1024, decode 7.5 against 7.8 tok/s; measured 2026-11-10)")
     ap.add_argument("--mtp-slots", type=int, default=N.DEFAULT_MTP_SLOTS,
                     help="VRAM slots for the MTP block's own experts, taken from its GPU's other slots (0: none; measured 2026-11-13: a "

@@ -54,7 +54,9 @@ MODELS = {
 }
 CONTEXTS = {"128k": 131072, "256k": 262144}
 DEFAULT_CONTEXT = 131072
-DEFAULT_MTP = 3            # drafts per step: temperature 1.0, 0/2/3/4 drafts 10.5/13.6/14.7/13.1 tok/s (2026-11-10)
+# drafts per step: temperature 1.0, 0/2/3/4 drafts 10.5/13.6/14.7/13.1 tok/s (2026-11-10, before the MTP slots); with the MTP slots and the
+# later decode changes 3 drafts 15 tok/s against 6 drafts 21 tok/s (2026-11-13, 2 x RTX 5060 Ti, 九九の表 with thinking off, 128K)
+DEFAULT_MTP = 6
 DEFAULT_CHUNK = 4096       # prompt rows per forward: a 3,218-token prompt 156 tok/s against 93 at 1024
 # VRAM slots for the MTP block's own experts (its GPU's other slots give the room): a verify window and its drafts 254 ms against 270 ms
 # without, 253 ms with 128 slots (2026-11-13, 2 x RTX 5060 Ti, 九九の表 with thinking off, temperature 1.0, MTP 6)

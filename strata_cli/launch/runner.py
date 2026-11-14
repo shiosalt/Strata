@@ -2711,7 +2711,7 @@ class Runner:
             return "Drafting: DSpark (used when it speeds up answers on this computer)"
         if self.nemotron():                                  # the model's own MTP block, 3 drafts a step (prompt lookup on top for text it repeats)
             from strata_control import nemotron35
-            return f"Drafting: the model's own MTP layer ({nemotron35.DEFAULT_MTP} drafts a step; at temperature 1.0 14.7 tok/s against 10.5 without, measured on 2 x RTX 5060 Ti)"
+            return f"Drafting: the model's own MTP layer ({nemotron35.DEFAULT_MTP} drafts a step; at temperature 1.0 21 tok/s with 6 against 15 with 3, measured on 2 x RTX 5060 Ti)"
         try:
             base, cfg = self.installed_state()
             want = self.drafting_inputs(cfg or {})

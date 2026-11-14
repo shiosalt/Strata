@@ -116,7 +116,7 @@ powershell -ExecutionPolicy Bypass -File tools\nemotron\build.ps1 -Vision
 .venv\Scripts\python.exe serve\server.py --engine strata --config build\nemotron-run\strata-nemotron-128k.json --port 8080
 ```
 
-主なオプション: `--mtp N`(0〜7、既定 3)、`--chunk N`(prompt を何行ずつ読むか、既定 4096。1024 だと 3,218 トークンの prompt が
+主なオプション: `--mtp N`(0〜7、既定 6。温度 1.0 で 3 は 15 tok/s、6 は 21 tok/s、2026-11-13)、`--chunk N`(prompt を何行ずつ読むか、既定 4096。1024 だと 3,218 トークンの prompt が
 93 tok/s、4096 で 156 tok/s)、`--gpu 0,1`、`--vision cpu|gpu|off`、`--vision-max-tokens N`(既定 3328。この mmproj では llama.cpp が
 画像を上限まで縮めないので、モデル自身の範囲 256〜3328 トークンの上端にしてあります)。
 
